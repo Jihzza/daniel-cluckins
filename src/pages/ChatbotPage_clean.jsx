@@ -42,14 +42,7 @@ export default function ChatbotPage() {
       const showWelcome = async () => {
         try {
           if (openaiService.isConfigured()) {
-            // Create user profile for personalized welcome
-            const userProfile = user ? {
-              full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-              email: user.email || null,
-              phone: user.user_metadata?.phone || null
-            } : null;
-            
-            const welcomeMessage = await openaiService.getWelcomeMessage(user?.id, userProfile);
+            const welcomeMessage = await openaiService.getWelcomeMessage(user?.id);
             setMessages([{ role: 'assistant', content: welcomeMessage }]);
           } else {
             setMessages([{ 
@@ -141,15 +134,7 @@ export default function ChatbotPage() {
         // Create the complete conversation including the current user message
         // (since setMessages is async, the current message isn't in the messages state yet)
         const currentConversation = [...messages, { role: 'user', content }];
-        
-        // Create user profile object from auth context
-        const userProfile = user ? {
-          full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-          email: user.email || null,
-          phone: user.user_metadata?.phone || null
-        } : null;
-        
-        const response = await openaiService.getChatResponse(currentConversation, user?.id, userProfile);
+        const response = await openaiService.getChatResponse(currentConversation, user?.id);
         
         if (response.success) {
           setMessages((prev) => [...prev, { role: 'assistant', content: response.content }]);
@@ -187,116 +172,96 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#002147] text-white">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-[#002147]">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Chatbot</h1>
-          <div className="flex items-center gap-2">
-            <div className="text-xs opacity-75 ml-2">Session: {sessionId.slice(0, 8)}</div>
+    <div className="min-h-screen bg-black text-white flex flex-col">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-yellow-600 to-orange-500 p-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+              <span className="text-lg">🤖</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Daniel DaGalow Assistant</h1>
+              <p className="text-sm opacity-90">Your personal coaching AI</p>
+            </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-3 py-4 space-y-3">
-          {messages.map((m, idx) => (
-            <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      {/* Messages Container */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {messages.map((message, index) => (
               <div
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm md:text-base shadow-sm ${
-                  m.role === 'user'
-                    ? 'bg-[#BFA200] text-black'
-                    : 'bg-black/10 text-white'
-                }`}
+                key={index}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {m.content.split('\n').map((line, lineIdx) => {
-                  // Check if line contains a markdown link
-                  const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
-                  if (linkMatch) {
-                    const [fullMatch, linkText, linkUrl] = linkMatch;
-                    const beforeLink = line.substring(0, line.indexOf(fullMatch));
-                    const afterLink = line.substring(line.indexOf(fullMatch) + fullMatch.length);
-                    
-                    return (
-                      <div key={lineIdx}>
-                        {beforeLink}
-                        <button 
-                          onClick={() => {
-                            // Redirect to Stripe checkout
-                            window.location.href = linkUrl;
-                          }}
-                          className="text-[#BFA200] underline hover:no-underline font-semibold bg-transparent border-none cursor-pointer p-0"
-                        >
-                          {linkText}
-                        </button>
-                        {afterLink}
-                      </div>
-                    );
-                  }
-                  
-                  // Check if line is bold
-                  if (line.startsWith('**') && line.endsWith('**')) {
-                    return (
-                      <div key={lineIdx} className="font-bold">
-                        {line.slice(2, -2)}
-                      </div>
-                    );
-                  }
-                  
-                  // Check if line is italic
-                  if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-                    return (
-                      <div key={lineIdx} className="italic opacity-75">
-                        {line.slice(1, -1)}
-                      </div>
-                    );
-                  }
-                  
-                  return <div key={lineIdx}>{line}</div>;
-                })}
+                <div
+                  className={`max-w-xl px-4 py-2 rounded-lg ${
+                    message.role === 'user'
+                      ? 'bg-gradient-to-r from-yellow-600 to-orange-500 text-white'
+                      : 'bg-gray-800 text-white border border-gray-700'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap break-words">
+                    {message.content}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-          
-          {isSending && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-black/10 text-white shadow-sm">
-                Typing...
+            ))}
+            {isSending && (
+              <div className="flex justify-start">
+                <div className="bg-gray-800 text-white border border-gray-700 max-w-xl px-4 py-2 rounded-lg">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </main>
-
-      <footer className="border-t border-white/10">
-        <div className="max-w-3xl mx-auto w-full px-3 py-3">
-          {!isAuthenticated && (
-            <div className="text-xs text-white/70 mb-2">
-              Please log in to send messages.
-            </div>
-          )}
-          <div className="relative flex items-end">
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              placeholder={isAuthenticated ? 'Ask me about coaching services, or say something like "I want to schedule a consultation for tomorrow at 2pm for 1h15min"...' : 'Log in to chat'}
-              disabled={!isAuthenticated || isSending}
-              className={`w-full bg-black/10 backdrop-blur-md border border-white/20 rounded-xl py-3 pl-4 pr-24 text-white placeholder:text-white/50 focus:outline-none focus:ring focus:ring-white/30 md:text-base resize-none`}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!canSend}
-              className={`absolute right-2 bottom-2 px-3 py-2 rounded-lg text-sm font-semibold transition ${
-                canSend ? 'bg-[#BFA200] text-black hover:opacity-90' : 'bg-black/10 text-white/50 cursor-not-allowed'
-              }`}
-            >
-              Send
-            </button>
+            )}
+            <div ref={messagesEndRef} />
           </div>
         </div>
-      </footer>
+
+        {/* Input Area */}
+        <div className="bg-gray-900 border-t border-gray-700 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex space-x-4">
+              <textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  !isAuthenticated 
+                    ? "Please log in to chat..." 
+                    : "Ask me about coaching services, or say something like 'I want to schedule a consultation for tomorrow at 2pm for 1h15min'..."
+                }
+                disabled={!canSend && !(!isAuthenticated)}
+                className="flex-1 bg-gray-800 text-white border border-gray-600 rounded-lg px-4 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent disabled:opacity-50"
+                rows="2"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                className="bg-gradient-to-r from-yellow-600 to-orange-500 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:from-yellow-700 hover:to-orange-600 transition-all duration-200"
+              >
+                Send
+              </button>
+            </div>
+            {!isAuthenticated && (
+              <div className="mt-2 text-center text-gray-400 text-sm">
+                Please{' '}
+                <a href="/login" className="text-yellow-500 hover:text-yellow-400">
+                  log in
+                </a>{' '}
+                to start chatting with Daniel's AI assistant.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
