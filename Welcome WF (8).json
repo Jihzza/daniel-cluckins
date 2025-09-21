@@ -1,0 +1,364 @@
+{
+  "name": "Welcome WF",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "welcome-message",
+        "responseMode": "lastNode",
+        "options": {
+          "allowedOrigins": "https://www.danieldagalow.com",
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        80
+      ],
+      "id": "f706a004-eb52-410b-a7be-27708f8949bf",
+      "name": "Receive Prompt1",
+      "webhookId": "f99cd8db-99c7-4c7c-bcbc-33669ff4a6db"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Send a personal and with less than 50 characters welcome message to the user to welcome him and know what they need.\nAccess the user information, if needed, for more personalization.\n\nThe only thing you can output is the user message and don't start and end the message in quotes.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        80
+      ],
+      "id": "79cc0240-6595-49ba-b2e3-f5472e5dee04",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Receive Prompt1').item.json.body.session_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        304
+      ],
+      "id": "36c9cfdd-7574-4ef5-93f3-58025c468fc9",
+      "name": "Postgres Chat Memory1",
+      "credentials": {
+        "postgres": {
+          "id": "mDTT52dtRYX1LhGv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "chatbot_conversations",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Receive Prompt1').item.json.body.user_id }}"
+            },
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $('Receive Prompt1').item.json.body.session_id }}"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $json.output }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "assistant"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        656,
+        80
+      ],
+      "id": "f6f8ed15-dbd9-4deb-a513-b2957ec55497",
+      "name": "Create conversation row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "profiles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Receive Prompt1').item.json.body.user_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        448,
+        304
+      ],
+      "id": "0ac93fc8-ab89-4f61-942f-3434837b953f",
+      "name": "Get a row in Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        304
+      ],
+      "id": "f6e315f2-ab61-4780-bc47-f70d3ff328a4",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "5v1sdNGDmmXokVPV",
+          "name": "OpenAi Social Media"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "MgQZGnYO0A1sTSMj",
+          "mode": "list",
+          "cachedResultName": "Create tables"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $json.session_id }}",
+            "created_at": "={{ $json.created_at }}",
+            "role": "={{ $json.role }}",
+            "content": "={{ $json.content }}",
+            "user_id": "={{ $json.user_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        80
+      ],
+      "id": "84664fb2-ec73-4255-af58-e23078cae2b9",
+      "name": "Execute Workflow"
+    }
+  ],
+  "pinData": {
+    "Receive Prompt1": [
+      {
+        "json": {
+          "headers": {
+            "host": "rafaello.app.n8n.cloud",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+            "content-length": "102",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "accept-language": "en,pt-PT;q=0.9,pt;q=0.8,es-ES;q=0.7,es;q=0.6",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "37.223.241.249",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "ES",
+            "cf-ray": "96b2d829918e7a83-CDG",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "origin": "https://www.danieldagalow.com",
+            "priority": "u=1, i",
+            "referer": "https://www.danieldagalow.com/",
+            "sec-ch-ua": "\"Not;A=Brand\";v=\"99\", \"Google Chrome\";v=\"139\", \"Chromium\";v=\"139\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "37.223.241.249, 172.71.134.137",
+            "x-forwarded-host": "rafaello.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-27-56cf765df-4bhq7",
+            "x-is-trusted": "yes",
+            "x-real-ip": "37.223.241.249"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "session_id": "b65e2261-6569-4a56-93cd-479f1a43209a",
+            "user_id": "fb0061da-df9a-4950-a481-063c7132f3e9"
+          },
+          "webhookUrl": "https://rafaello.app.n8n.cloud/webhook/welcome-message",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Receive Prompt1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Create conversation row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create conversation row": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f7e661ac-8592-4c99-b95a-7e686a03790d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7de757e053a945fda009b5a85580969a4980f3ffcded96603f08ad1dd9453a36"
+  },
+  "id": "JmiP59m7JmQ4OChY",
+  "tags": []
+}

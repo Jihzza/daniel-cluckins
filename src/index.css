@@ -1,0 +1,408 @@
+/* src/index.css */
+@import 'tailwindcss';
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  scroll-behavior: smooth;
+  background-color: #000;
+  /* Disable text and image selection */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Disable image dragging */
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+.chat-icon-glow {
+  filter:
+    drop-shadow(0 0 4px #BFA200)
+    drop-shadow(0 0 8px #BFA200)
+    drop-shadow(0 0 16px #BFA200)
+    drop-shadow(0 0 24px #BFA200);
+  transition: filter 0.3s ease-in-out;
+}
+
+:root {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Global selection disable for all elements */
+* {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* Disable context menu (right-click) */
+* {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Utility class to re-enable selection for specific elements */
+.selectable {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+@layer utilities {
+  .sidebar-scrollbar {
+    /* Firefox */
+    scrollbar-width: thin;
+    /* 'auto' | 'thin' | 'none' */
+    /* thumb track */
+    scrollbar-color: var(--sb-thumb, #BFA200) var(--sb-track, transparent);
+    /* Prevent layout shift when the bar appears (Chrome/Safari) */
+    scrollbar-gutter: stable both-edges;
+  }
+
+  /* Chrome/Edge/Safari */
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 9999px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: #BFA200;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    /* creates a "gap" look */
+  }
+
+  /* Hover/active feedback (WebKit) */
+  .sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-hover, #d8b400);
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:active {
+    background: var(--sb-thumb-active, #a88300);
+  }
+
+  /* Dark mode variants (optional; uses Tailwind's .dark) */
+  .dark .sidebar-scrollbar {
+    scrollbar-color: var(--sb-thumb-dark, #cbd5e1) var(--sb-track-dark, #0b1220);
+  }
+
+  .dark .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: var(--sb-track-dark, #0b1220);
+  }
+
+  .dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-dark, #cbd5e1);
+    border: 2px solid var(--sb-track-dark, #0b1220);
+  }
+
+  /* Utility to fully hide scrollbars but keep scrolling */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    /* IE 10+ */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
+  }
+}
+
+/* This class allows a child element to "break out" of a padded container. */
+@layer utilities {
+  .full-bleed {
+    /* 1. Force the element's width to match the entire browser window. */
+    width: 100vw;
+    /* 2. Establish a positioning context. */
+    position: relative;
+    /* 3. Center the element horizontally relative to its original position. */
+    left: 50%;
+    right: 50%;
+    /* 4. Use negative margins to pull the element left and right by half the viewport's width.
+       This effectively cancels out the parent container's padding and centers the full-width element. */
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+}
+
+
+/* Word Carousel */
+/* The keyframes define the anmimation: it moves the element from left to right*/
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    /* We translate it by half its  total width, which corresponds to the length of the original (non-duplicated) word list. */
+    transform: translateX(-1000%);
+  }
+}
+
+.word-carousel-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to left, transparent, black 20px, black calc(100% - 100px), transparent);
+  mask-image: linear-gradient(to left, transparent, black 20px, black calc(100% - 100px), transparent);
+}
+
+.word-carousel-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* This class applies the animmation to our carousel track */
+.word-carousel-track {
+  /* 'will-change' is a performance hint for the browser */
+  will-change: transform;
+  animation: scroll 20s linear infinite;
+}
+
+/* When the user is dragging, we pause the animation */
+.word-carousel-track.is-dragging {
+  animation-play-state: paused;
+}
+
+/* Feature Carousel */
+/* We target the custom class we added to our SwiperSlide component. */
+.swiper-slide-custom {
+  /* This remains our mobile-first default */
+  width: 70%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* --- ADD THESE MEDIA QUERIES --- */
+
+/* For tablets (md screens, 768px and up) */
+@media (min-width: 668px) {
+  .swiper-slide-custom {
+    width: 40%;
+    /* Each slide now takes up 40% of the container */
+  }
+
+  .feature-swiper .swiper-slide-custom {
+    /* We can also give them a fixed height on desktop if we want */
+    height: 150px !important;
+  }
+
+  .testimonial-swiper .swiper-slide-custom {
+    height: 350px !important;
+  }
+
+  .image-swiper .swiper-slide-custom {
+    /* pick your size: 22–28% is a good range */
+    width: 35% !important;
+    /* try 22% if you want even smaller */
+  }
+}
+
+/* Desktop-only edge fade for any horizontally scrollable content */
+@media (min-width: 1024px) {
+  .desktop-fade-container {
+    -webkit-mask-image: linear-gradient(to right,
+        transparent 0,
+        #fff 5%,
+        #fff 95%,
+        transparent 100%);
+    mask-image: linear-gradient(to right,
+        transparent 0,
+        #fff 5%,
+        #fff 95%,
+        transparent 100%);
+    mask-mode: alpha;
+
+  }
+
+  .image-swiper .swiper-slide-custom {
+    /* pick your size: 22–28% is a good range */
+    width: 23% !important;
+    /* try 22% if you want even smaller */
+  }
+}
+
+
+.feature-swiper .swiper-slide-custom {
+  height: 120px;
+}
+
+/* Ensure single slide is centered in feature carousel */
+.feature-swiper .swiper-slide-custom {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.testimonial-swiper .swiper-slide-custom {
+  height: 400px;
+}
+
+.desktop-fade-container {
+
+  /* On mobile and tablet, this class does nothing. */
+  /* The gradient mask is only applied on large screens (1024px and up). */
+  @media (min-width: 1024px) {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  }
+}
+
+.image-swiper .swiper-slide-custom {
+  width: 45%;
+}
+
+/* Style the form labels */
+.homepage-signup-form label {
+  color: #000;
+  /* Lighter text color for better contrast on a dark background */
+  text-align: left;
+  /* Align labels to the left */
+}
+
+/* Style the input fields to match the gold theme */
+.homepage-signup-form input {
+  background-color: transparent;
+  /* Dark background for inputs */
+  border: 2px solid #BFA200;
+  /* Gold border */
+  color: #000;
+  /* White text for input */
+  padding: 0.75rem 1rem;
+  /* More padding for a better look */
+}
+
+/* Style the input focus state */
+.homepage-signup-form input:focus {
+  --tw-ring-color: #BFA200;
+  /* Tailwind variable for the focus ring */
+}
+
+/* Style the placeholder text inside inputs */
+.homepage-signup-form input::placeholder {
+  color: #000;
+  /* Gray placeholder text */
+  opacity: 0.5;
+}
+
+/* Style the "or" separator line */
+.homepage-signup-form hr {
+  border-color: #000;
+  /* Darker gray border */
+}
+
+/* The original has a white bg for the 'or' text, we use the section's dark bg */
+.homepage-signup-form span.bg-white {
+  background-color: transparent !important;
+  /* Force override */
+  color: #000;
+}
+
+/* Style the "Already have an account? Log in" text and link */
+.homepage-signup-form p {
+  color: #000;
+  /* Gray text for the paragraph */
+}
+
+.homepage-signup-form p a {
+  color: #BFA200;
+  /* Gold color for the link */
+  text-decoration: underline;
+}
+
+.homepage-signup-form p a:hover {
+  color: #ddb911;
+  /* Brighter gold on hover */
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari, and Opera */
+}
+
+.rdp-day {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Neutralize browser autofill styles so inputs keep custom appearance */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: currentColor;
+  caret-color: currentColor;
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset;
+  box-shadow: 0 0 0px 1000px transparent inset;
+  transition: background-color 9999s ease-in-out 0s, color 9999s ease-in-out 0s;
+}
+
+/* Firefox */
+input:-moz-autofill,
+textarea:-moz-autofill,
+select:-moz-autofill {
+  box-shadow: 0 0 0px 1000px transparent inset;
+  background-color: transparent !important;
+  color: currentColor !important;
+}
+
+/* Future/standard selector (safe no-op where unsupported) */
+input:autofill,
+textarea:autofill,
+select:autofill {
+  box-shadow: 0 0 0px 1000px transparent inset;
+}
+
+@layer base {
+  /* Default strong shadow for non-text UI elements unless already shadowed */
+  :where(
+    div, section, article, aside, header, footer, nav,
+    main, form, fieldset, legend,
+    ul, ol, li,
+    figure, figcaption,
+    img, video, canvas, svg,
+    button, input, select, textarea,
+    details, summary
+  ):where(:not([class*="shadow-"]):not([class~="shadow"])) {
+    /* Tailwind-compatible shadow-xl */
+    --tw-shadow: var(--tw-shadow, 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04));
+    --tw-shadow-colored: var(--tw-shadow-colored, 0 20px 25px -5px var(--tw-shadow-color), 0 10px 10px -5px var(--tw-shadow-color));
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  }
+}
+
+@layer base {
+  /* Subtle text drop shadow by default for readability (skip when explicitly shadowed) */
+  :where(h1,h2,h3,h4,h5,h6,p,span,small,label,em,strong,blockquote,code,pre):where(:not([class*="drop-shadow-"])) {
+    /* Tailwind drop-shadow-md approximation */
+    filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.06));
+  }
+}

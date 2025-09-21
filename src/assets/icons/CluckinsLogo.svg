@@ -1,0 +1,12 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  preserveAspectRatio="xMidYMid meet"
+>
+  <g transform="translate(12 12) scale(0.8) translate(-4 -15.5)">
+    <path
+      d="M3.95062 0.615894L0 0L3.5 4.10596L0 27.0993L4.04938 31L8 27.0993L4.5 4.10596L7.90123 0L3.95062 0.615894Z"
+      fill="#BFA200"
+    />
+  </g>
+</svg>

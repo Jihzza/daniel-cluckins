@@ -1,0 +1,1223 @@
+{
+  "name": "Decision WF",
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        688
+      ],
+      "id": "469df460-0265-4187-9c51-7b587cd8dad1",
+      "name": "Postgres Chat Memory4",
+      "credentials": {
+        "postgres": {
+          "id": "mDTT52dtRYX1LhGv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Based on the user message \"{{ $json.content }}\" analyze it and make the decision of what it should be done next.\n\nif there is anything else to do besides reppliyng immediatly to the user, if we need to schedule a consultations, report a complain, more info is needed etc. Output besides with the answer a single word that will be \"Send\" in case of decision being to answer the user immediatly or it will be \"Workflow\" if there is anything else needed to be done",
+        "options": {
+          "systemMessage": "=You are going to grab all the info provided throughout teh connected databases and that have the same {{ $('Receive Prompt4').item.json.body.session_id }} and make the decision on what to do next, to what next workflow will this follow to. Think deeply about all the information passed and based on the user message, what will be the next step\n\nAccess the databases that are connected through the Tool to get information required"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        832,
+        464
+      ],
+      "id": "36860e55-3fb3-4d45-bc97-9f757da74084",
+      "name": "Decision Maker",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "644ebfca-2228-40c5-a423-763ee5d41192",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "Send",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1712,
+        464
+      ],
+      "id": "b2fa37f6-88d3-4301-ad3e-808d885ceeb4",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        2064,
+        224
+      ],
+      "id": "c9da9edb-fabc-43a7-bae5-2da298479dcb",
+      "name": "Postgres Chat Memory6",
+      "credentials": {
+        "postgres": {
+          "id": "mDTT52dtRYX1LhGv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        2208,
+        944
+      ],
+      "id": "6a7fe87e-5c9a-4fd7-9664-203b4044f67f",
+      "name": "Postgres Chat Memory7",
+      "credentials": {
+        "postgres": {
+          "id": "mDTT52dtRYX1LhGv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "scheduling",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "a15e347f-44ab-477b-a9c2-64a6d79948ac"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "415f0955-ea3d-4476-aa90-e804345b9eca",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "complain",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6f863bd9-3555-4c4f-ad38-1b5894ad39e6",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "testimonial",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        0,
+        1040
+      ],
+      "id": "8f379d95-3cc8-4423-99c2-b74b5260875b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=send the message to the user based on all the infomration we've gathered in during the full lenght of the WF. Take in consideration the narration of the interaction, the message description, the conversation history and the action plan to determine the best message possible being sent to the user\n\nJust output the content of message that needs to be sent to the user like a normal conversation between people",
+        "options": {
+          "systemMessage": "You are responsible to send the message to the user based on all the infomration we've gathered in during the full lenght of the WF. Take in consideration the narration of the interaction, the message description, the conversation history and the action plan to determine the best message possible being sent to the user"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2320,
+        0
+      ],
+      "id": "fcb56d5a-8c46-4b9e-bc8e-981e7ef9921b",
+      "name": "Message to User"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Determine what type of workflow should be initiated based on the user message and the context provided during the full Workflow. Take every bit of information into consideration in determining the next WF\n\nJust answer with.\n\nFor the scheduling workflow say \"scheduling\"\nFor the complain workflow say \"complain\"\nFor the testimonial workflow say \"testimonial\"",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        720
+      ],
+      "id": "4ce8a282-86a3-40b3-a3b5-b0eaf02bb354",
+      "name": "WorkFlow determiner"
+    },
+    {
+      "parameters": {
+        "tableId": "chatbot_conversations",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.body.user_id }}"
+            },
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $json.body.session_id }}"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $json.body.chatInput }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "user"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        224,
+        464
+      ],
+      "id": "821ae4d2-6ede-4ee0-b4bc-1c3115c54ac4",
+      "name": "Create Row chatbot_conversations4",
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "message_description",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        704,
+        688
+      ],
+      "id": "8985d2f3-0d21-4f22-b651-cc2cfcbef756",
+      "name": "Get a row in Supabase6",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "conversation_description",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        832,
+        688
+      ],
+      "id": "9b7f37cd-fa70-486b-b1ff-618e4f3c457b",
+      "name": "Get a row in Supabase7",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "questions_answers",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        960,
+        688
+      ],
+      "id": "c93227c0-2fb2-4778-98f8-cf50fa1a1487",
+      "name": "Get a row in Supabase8",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "action_plan",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        688
+      ],
+      "id": "a3ca6b43-8ade-416c-ab34-515e2b68ae28",
+      "name": "Get a row in Supabase9",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "message_description",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        224
+      ],
+      "id": "c60d07d4-b213-4dd1-a849-633f155d59e5",
+      "name": "Get a row in Supabase14",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "conversation_description",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        224
+      ],
+      "id": "540c6972-894d-49b8-8daa-be91d0c3e220",
+      "name": "Get a row in Supabase15",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "questions_answers",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2448,
+        224
+      ],
+      "id": "1681ed4e-7f78-4e73-8e55-4b7ece838afe",
+      "name": "Get a row in Supabase16",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "action_plan",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2576,
+        224
+      ],
+      "id": "779168cf-0cf5-4fb3-a95a-97d6b8497fad",
+      "name": "Get a row in Supabase17",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "message_description",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2336,
+        944
+      ],
+      "id": "6afa53f9-99ed-4e50-8804-567f51f37b93",
+      "name": "Get a row in Supabase18",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "conversation_description",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2464,
+        944
+      ],
+      "id": "1a3f5b8d-f901-4a8e-82cd-7f6646965351",
+      "name": "Get a row in Supabase19",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "questions_answers",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2592,
+        944
+      ],
+      "id": "d726343c-f567-4554-bfd5-65c15dc6d723",
+      "name": "Get a row in Supabase20",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "action_plan",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').first().json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2720,
+        944
+      ],
+      "id": "348d7b16-8618-4d54-845f-f3e501896350",
+      "name": "Get a row in Supabase21",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        688
+      ],
+      "id": "4a1105a4-4479-4999-8124-275fe8bd5cf4",
+      "name": "OpenAI Chat Model4",
+      "credentials": {
+        "openAiApi": {
+          "id": "5v1sdNGDmmXokVPV",
+          "name": "OpenAi Social Media"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1936,
+        224
+      ],
+      "id": "631b0a3a-daeb-4498-b9df-d77d733bb6bc",
+      "name": "OpenAI Chat Model6",
+      "credentials": {
+        "openAiApi": {
+          "id": "5v1sdNGDmmXokVPV",
+          "name": "OpenAi Social Media"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2080,
+        944
+      ],
+      "id": "9d5dd188-52f5-412c-a31e-aa3cfb71e0a2",
+      "name": "OpenAI Chat Model7",
+      "credentials": {
+        "openAiApi": {
+          "id": "5v1sdNGDmmXokVPV",
+          "name": "OpenAi Social Media"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "decision",
+        "responseMode": "lastNode",
+        "options": {
+          "allowedOrigins": "https://www.danieldagalow.com",
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        464
+      ],
+      "id": "53572b52-9267-4e74-82c2-eb01ad514632",
+      "name": "Receive Prompt4",
+      "webhookId": "f99cd8db-99c7-4c7c-bcbc-33669ff4a6db"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "chatbot_conversations",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').item.json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        688
+      ],
+      "id": "04dbc268-602c-4266-a4fa-f8210cc802f0",
+      "name": "Get a row in Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "chatbot_conversations",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').item.json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2704,
+        224
+      ],
+      "id": "16a71ea2-4004-456e-932d-978e52b0d208",
+      "name": "Get a row in Supabase2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "chatbot_conversations",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Receive Prompt4').item.json.body.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        2848,
+        944
+      ],
+      "id": "e03066ec-8908-485a-96fc-1125ee959e2b",
+      "name": "Get a row in Supabase3",
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Call this tool to retrieve all the info related to Daniel DaGalow and his services",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        688
+      ],
+      "id": "aa701c01-de33-4c2b-9c70-f59d0e98d571",
+      "name": "Supabase Vector Store1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "sPxYR0D8c2h6M0jW",
+          "name": "Supabase DanielDaGalow"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1424,
+        896
+      ],
+      "id": "4ebcdda1-2567-4521-9217-75ae0fb38e84",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "5v1sdNGDmmXokVPV",
+          "name": "OpenAi Social Media"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Receive Prompt4": [
+      {
+        "json": {
+          "headers": {
+            "host": "rafaello.app.n8n.cloud",
+            "user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36",
+            "content-length": "182",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "accept-language": "en,pt-PT;q=0.9,pt;q=0.8,es-ES;q=0.7,es;q=0.6",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "37.223.241.249",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "ES",
+            "cf-ray": "96b2db013139cfcb-MAD",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "origin": "https://www.danieldagalow.com",
+            "priority": "u=1, i",
+            "referer": "https://www.danieldagalow.com/",
+            "sec-ch-ua": "\"Not;A=Brand\";v=\"99\", \"Google Chrome\";v=\"139\", \"Chromium\";v=\"139\"",
+            "sec-ch-ua-mobile": "?1",
+            "sec-ch-ua-platform": "\"Android\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "37.223.241.249, 188.114.111.37",
+            "x-forwarded-host": "rafaello.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-27-56cf765df-4bhq7",
+            "x-is-trusted": "yes",
+            "x-real-ip": "37.223.241.249"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "session_id": "b65e2261-6569-4a56-93cd-479f1a43209a",
+            "chatInput": "hi. i want to know daniel better to know the services he provides",
+            "user_id": "fb0061da-df9a-4950-a481-063c7132f3e9"
+          },
+          "webhookUrl": "https://rafaello.app.n8n.cloud/webhook/decision",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Postgres Chat Memory4": {
+      "ai_memory": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision Maker": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Message to User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WorkFlow determiner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory6": {
+      "ai_memory": [
+        [
+          {
+            "node": "Message to User",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory7": {
+      "ai_memory": [
+        [
+          {
+            "node": "WorkFlow determiner",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WorkFlow determiner": {
+      "main": [
+        []
+      ]
+    },
+    "Create Row chatbot_conversations4": {
+      "main": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase6": {
+      "ai_tool": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase7": {
+      "ai_tool": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase8": {
+      "ai_tool": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase9": {
+      "ai_tool": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase14": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message to User",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase15": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message to User",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase16": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message to User",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase17": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message to User",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase18": {
+      "ai_tool": [
+        [
+          {
+            "node": "WorkFlow determiner",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase19": {
+      "ai_tool": [
+        [
+          {
+            "node": "WorkFlow determiner",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase20": {
+      "ai_tool": [
+        [
+          {
+            "node": "WorkFlow determiner",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase21": {
+      "ai_tool": [
+        [
+          {
+            "node": "WorkFlow determiner",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model6": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Message to User",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model7": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "WorkFlow determiner",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive Prompt4": {
+      "main": [
+        [
+          {
+            "node": "Create Row chatbot_conversations4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message to User": {
+      "main": [
+        []
+      ]
+    },
+    "Switch": {
+      "main": [
+        [],
+        [],
+        []
+      ]
+    },
+    "Get a row in Supabase": {
+      "ai_tool": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase3": {
+      "ai_tool": [
+        [
+          {
+            "node": "WorkFlow determiner",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row in Supabase2": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message to User",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "Decision Maker",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "35db30b6-2719-415c-ad02-b09fedc8cb25",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7de757e053a945fda009b5a85580969a4980f3ffcded96603f08ad1dd9453a36"
+  },
+  "id": "9LaCICLqpYuanqiK",
+  "tags": []
+}
