@@ -754,91 +754,171 @@ class MCPClient {
    * Check if a message contains appointment scheduling intent
    */
   isAppointmentRequest(message) {
-    const appointmentKeywords = [
-      'schedule', 'book', 'appointment', 'meeting', 'call',
-      'consultation', 'session', 'available', 'time slot',
-      'reserve', 'set up', 'arrange', 'organize',
-      'tomorrow', 'today', 'next week', 'this week'
-    ];
+    const lowerMessage = message.toLowerCase();
     
     // Exclude if it contains subscription-related terms
     const subscriptionTerms = ['coaching', 'subscription', 'subscribe', 'premium', 'basic', 'standard'];
-    const lowerMessage = message.toLowerCase();
-    
     if (subscriptionTerms.some(term => lowerMessage.includes(term))) {
       console.log('🔍 MCP Client: Subscription terms detected, skipping appointment detection');
       return false;
     }
     
-    const matches = appointmentKeywords.filter(keyword => lowerMessage.includes(keyword));
-    console.log('🔍 MCP Client: Appointment keywords found:', matches);
-    return matches.length > 0;
+    // Exclude informational questions - these should go to OpenAI
+    const informationalPatterns = [
+      /what.*(?:subject|topic|cover|include|about|offer|service|consultation|session)/i,
+      /how.*(?:work|process|consultation|session)/i,
+      /tell me about/i,
+      /explain/i,
+      /describe/i,
+      /can you.*(?:tell|explain|describe)/i,
+      /which.*(?:subject|topic|service)/i,
+      /do you.*(?:cover|offer|provide)/i,
+      /what kind of/i,
+      /what type of/i,
+      /information about/i,
+      /learn about/i,
+      /know about/i,
+      /details about/i
+    ];
+    
+    // If it's clearly an informational question, don't trigger appointment form
+    if (informationalPatterns.some(pattern => pattern.test(message))) {
+      console.log('🔍 MCP Client: Informational question detected, skipping appointment detection');
+      return false;
+    }
+    
+    // Only trigger on clear booking intent patterns
+    const bookingPatterns = [
+      // Direct booking requests
+      /(?:want to|would like to|need to|can i).*(?:schedule|book|reserve|arrange)/i,
+      /(?:schedule|book|reserve|arrange).*(?:appointment|meeting|consultation|session|call)/i,
+      
+      // Specific time mentions with booking intent
+      /(?:schedule|book|reserve).*(?:for|on|at).*(?:tomorrow|today|next week|this week|\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm))/i,
+      /(?:available|free).*(?:for|on).*(?:appointment|meeting|consultation)/i,
+      
+      // Direct requests with time
+      /(?:appointment|meeting|consultation).*(?:for|on|at).*(?:tomorrow|today|next week|this week|\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm))/i,
+      
+      // Set up / organize requests
+      /(?:set up|organize).*(?:appointment|meeting|consultation|session)/i,
+      
+      // "I want to" + service
+      /i (?:want to|would like to|need to).*(?:have|get).*(?:appointment|consultation|meeting|session)/i
+    ];
+    
+    const hasBookingPattern = bookingPatterns.some(pattern => pattern.test(message));
+    console.log('🔍 MCP Client: Booking patterns found:', hasBookingPattern);
+    
+    return hasBookingPattern;
   }
 
   /**
    * Check if a message contains coaching subscription intent
    */
   isSubscriptionRequest(message) {
-    const subscriptionKeywords = [
-      'subscribe', 'subscription', 'coaching', 'plan', 'monthly',
-      'basic', 'standard', 'premium', 'coaching plan', 'membership',
-      'want to', 'would like to', 'sign up', 'join'
-    ];
-    
     const lowerMessage = message.toLowerCase();
     
-    // Check for specific patterns that indicate subscription intent
+    // Exclude informational questions about coaching - these should go to OpenAI
+    const informationalPatterns = [
+      /what.*(?:coaching|plan|subscription|offer|include|cover)/i,
+      /how.*(?:coaching|plan|subscription|work)/i,
+      /tell me about.*(?:coaching|plan|subscription)/i,
+      /explain.*(?:coaching|plan|subscription)/i,
+      /describe.*(?:coaching|plan|subscription)/i,
+      /can you.*(?:tell|explain|describe).*(?:coaching|plan|subscription)/i,
+      /which.*(?:coaching|plan|subscription)/i,
+      /do you.*(?:offer|provide).*(?:coaching|plan)/i,
+      /what kind of.*(?:coaching|plan)/i,
+      /what type of.*(?:coaching|plan)/i,
+      /information about.*(?:coaching|plan)/i,
+      /learn about.*(?:coaching|plan)/i,
+      /know about.*(?:coaching|plan)/i,
+      /details about.*(?:coaching|plan)/i,
+      /difference between.*(?:plan|coaching)/i,
+      /compare.*(?:plan|coaching)/i
+    ];
+    
+    // If it's clearly an informational question, don't trigger subscription form
+    if (informationalPatterns.some(pattern => pattern.test(message))) {
+      console.log('🔍 MCP Client: Informational coaching question detected, skipping subscription detection');
+      return false;
+    }
+    
+    // Only trigger on clear subscription intent patterns
     const subscriptionPatterns = [
-      /subscribe.*coaching/i,
-      /coaching.*plan/i,
-      /want.*subscribe/i,
-      /would like.*subscribe/i,
-      /sign up.*coaching/i,
-      /join.*coaching/i,
-      /premium.*coaching/i,
-      /basic.*coaching/i,
-      /standard.*coaching/i
+      // Direct subscription requests
+      /(?:want to|would like to|need to|can i).*(?:subscribe|sign up|join).*(?:coaching|plan)/i,
+      /(?:subscribe|sign up|join).*(?:to|for).*(?:coaching|plan|premium|basic|standard)/i,
+      
+      // Specific plan requests
+      /(?:want|would like|need|get).*(?:premium|basic|standard).*(?:coaching|plan)/i,
+      /(?:premium|basic|standard).*(?:coaching|plan).*(?:please|subscription)/i,
+      
+      // Direct plan mentions with intent
+      /i (?:want|would like|need).*(?:premium|basic|standard)/i,
+      /(?:get|start).*(?:coaching|subscription|plan)/i,
+      
+      // Monthly/payment related with coaching
+      /(?:monthly|pay|payment).*(?:coaching|plan)/i,
+      /(?:coaching|plan).*(?:monthly|subscription)/i
     ];
     
     const hasPattern = subscriptionPatterns.some(pattern => pattern.test(message));
-    const matches = subscriptionKeywords.filter(keyword => lowerMessage.includes(keyword));
+    console.log('🔍 MCP Client: Subscription patterns found:', hasPattern);
     
-    console.log('🔍 MCP Client: Subscription keywords found:', matches);
-    console.log('🔍 MCP Client: Subscription patterns matched:', hasPattern);
-    
-    return hasPattern || matches.length > 0;
+    return hasPattern;
   }
 
   /**
    * Check if a message contains pitch deck request intent
    */
   isPitchDeckRequest(message) {
-    const pitchKeywords = [
-      'pitch deck', 'pitchdeck', 'galowclub', 'perspectiv',
-      'presentation', 'deck', 'pitch', 'investor', 'funding'
-    ];
-    
     const lowerMessage = message.toLowerCase();
     
-    // Check for specific patterns that indicate pitch deck intent
+    // Exclude informational questions about projects - these should go to OpenAI
+    const informationalPatterns = [
+      /what.*(?:galowclub|perspectiv|pitch|project)/i,
+      /how.*(?:galowclub|perspectiv|work)/i,
+      /tell me about.*(?:galowclub|perspectiv|pitch)/i,
+      /explain.*(?:galowclub|perspectiv|pitch)/i,
+      /describe.*(?:galowclub|perspectiv|pitch)/i,
+      /can you.*(?:tell|explain|describe).*(?:galowclub|perspectiv|pitch)/i,
+      /information about.*(?:galowclub|perspectiv|pitch)/i,
+      /learn about.*(?:galowclub|perspectiv)/i,
+      /know about.*(?:galowclub|perspectiv)/i,
+      /details about.*(?:galowclub|perspectiv)/i
+    ];
+    
+    // If it's clearly an informational question, don't trigger pitch form
+    if (informationalPatterns.some(pattern => pattern.test(message))) {
+      console.log('🔍 MCP Client: Informational project question detected, skipping pitch deck detection');
+      return false;
+    }
+    
+    // Only trigger on clear pitch deck request patterns
     const pitchPatterns = [
-      /pitch deck/i,
-      /pitchdeck/i,
-      /galowclub/i,
-      /perspectiv/i,
-      /request.*pitch/i,
-      /want.*pitch/i,
-      /would like.*pitch/i,
-      /get.*pitch/i
+      // Direct pitch deck requests
+      /(?:want to|would like to|need to|can i).*(?:request|get|receive|see).*(?:pitch deck|pitchdeck)/i,
+      /(?:request|get|receive|see).*(?:pitch deck|pitchdeck)/i,
+      
+      // Project specific requests
+      /(?:want to|would like to|need to|can i).*(?:request|get|receive|see).*(?:galowclub|perspectiv)/i,
+      /(?:request|get|receive|see).*(?:galowclub|perspectiv).*(?:pitch|deck)/i,
+      
+      // Direct mentions with clear intent
+      /(?:galowclub|perspectiv).*(?:pitch deck|pitchdeck).*(?:please|request)/i,
+      /i (?:want|would like|need).*(?:galowclub|perspectiv).*(?:pitch|deck)/i,
+      
+      // Investment/funding context
+      /(?:interested in|looking at).*(?:galowclub|perspectiv|investment)/i,
+      /(?:invest|funding|investor).*(?:galowclub|perspectiv)/i
     ];
     
     const hasPattern = pitchPatterns.some(pattern => pattern.test(message));
-    const matches = pitchKeywords.filter(keyword => lowerMessage.includes(keyword));
+    console.log('🔍 MCP Client: Pitch deck patterns found:', hasPattern);
     
-    console.log('🔍 MCP Client: Pitch deck keywords found:', matches);
-    console.log('🔍 MCP Client: Pitch deck patterns matched:', hasPattern);
-    
-    return hasPattern || matches.length > 0;
+    return hasPattern;
   }
 
   /**
