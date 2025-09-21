@@ -356,7 +356,10 @@ export default function ChatbotPage() {
       }
 
       try {
-        const response = await openaiService.getChatResponse(messages, user?.id);
+        // Create the complete conversation including the current user message
+        // (since setMessages is async, the current message isn't in the messages state yet)
+        const currentConversation = [...messages, { role: 'user', content }];
+        const response = await openaiService.getChatResponse(currentConversation, user?.id);
         
         if (response.success) {
           setMessages((prev) => [...prev, { role: 'assistant', content: response.content }]);
