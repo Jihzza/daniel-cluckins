@@ -3,11 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { mcpClient } from '../services/mcpClient';
+import { openaiService } from '../services/openaiService';
 import AppointmentScheduler from '../components/chatbot/AppointmentScheduler';
 import CoachingSubscription from '../components/chatbot/CoachingSubscription';
 import PitchDeckRequest from '../components/chatbot/PitchDeckRequest';
 
-const WEBHOOK_URL = 'https://rafaello.app.n8n.cloud/webhook/decision';
 const SESSION_STORAGE_KEY = 'chatbot-session-id';
 
 export default function ChatbotPage() {
@@ -24,6 +24,7 @@ export default function ChatbotPage() {
   });
 
   const [messages, setMessages] = useState(() => []);
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showAppointmentScheduler, setShowAppointmentScheduler] = useState(false);
@@ -41,6 +42,35 @@ export default function ChatbotPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Show welcome message when component mounts and user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && messages.length === 0 && !hasShownWelcome) {
+      const showWelcome = async () => {
+        try {
+          if (openaiService.isConfigured()) {
+            const welcomeMessage = await openaiService.getWelcomeMessage(user?.id);
+            setMessages([{ role: 'assistant', content: welcomeMessage }]);
+          } else {
+            setMessages([{ 
+              role: 'assistant', 
+              content: "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?" 
+            }]);
+          }
+        } catch (error) {
+          console.error('Error showing welcome message:', error);
+          setMessages([{ 
+            role: 'assistant', 
+            content: "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?" 
+          }]);
+        }
+        setHasShownWelcome(true);
+      };
+      
+      // Small delay to make the welcome feel more natural
+      setTimeout(showWelcome, 500);
+    }
+  }, [isAuthenticated, messages.length, hasShownWelcome, user?.id]);
 
   // Handle payment success/cancellation from URL parameters
   useEffect(() => {
@@ -316,33 +346,36 @@ export default function ChatbotPage() {
         }
       }
 
-      // Regular message processing via n8n webhook
-      const res = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user?.id ?? null,
-          session_id: sessionId,
-          // Send both keys for compatibility with existing workflows
-          content,
-          message: content,
-        }),
-      });
+      // Regular message processing via OpenAI API
+      if (!openaiService.isConfigured()) {
+        setMessages((prev) => [...prev, { 
+          role: 'assistant', 
+          content: "I'm currently not configured to handle general questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY)." 
+        }]);
+        return;
+      }
 
-      let text = '';
       try {
-        const data = await res.json();
-        const first = Array.isArray(data) ? data[0] : data;
-        text = first?.content ?? first?.value ?? first?.output ?? '';
-      } catch (_) {
-        // fall through to generic error below
+        const response = await openaiService.getChatResponse(messages, user?.id);
+        
+        if (response.success) {
+          setMessages((prev) => [...prev, { role: 'assistant', content: response.content }]);
+        } else {
+          throw new Error('Failed to get AI response');
+        }
+      } catch (aiError) {
+        console.error('OpenAI service error:', aiError);
+        let errorMessage = "I'm having trouble processing your request right now. Please try again in a moment.";
+        
+        // Provide specific error messages for common issues
+        if (aiError.message.includes('quota')) {
+          errorMessage = "I've reached my usage limit for today. Please try again later or contact support.";
+        } else if (aiError.message.includes('api_key')) {
+          errorMessage = "There's a configuration issue with my AI service. Please contact support.";
+        }
+        
+        setMessages((prev) => [...prev, { role: 'assistant', content: errorMessage }]);
       }
-
-      if (!res.ok || !text) {
-        text = "Sorry, I couldn't process that. Please try again.";
-      }
-
-      setMessages((prev) => [...prev, { role: 'assistant', content: text }]);
     } catch (err) {
       setMessages((prev) => [
         ...prev,

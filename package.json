@@ -27,6 +27,7 @@
     "i18next-http-backend": "^3.0.2",
     "lucide-react": "^0.542.0",
     "motion": "^12.19.2",
+    "openai": "^5.22.0",
     "prop-types": "^15.8.1",
     "react": "^19.1.0",
     "react-calendar": "^6.0.0",
