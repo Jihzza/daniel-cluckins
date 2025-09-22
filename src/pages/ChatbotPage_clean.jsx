@@ -236,7 +236,7 @@ export default function ChatbotPage() {
                 placeholder={
                   !isAuthenticated 
                     ? "Please log in to chat..." 
-                    : "Ask me about coaching services, or say something like 'I want to schedule a consultation for tomorrow at 2pm for 1h15min'..."
+                    : "Ask me something!"
                 }
                 disabled={!canSend && !(!isAuthenticated)}
                 className="flex-1 bg-gray-800 text-white border border-gray-600 rounded-lg px-4 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent disabled:opacity-50"

@@ -281,7 +281,7 @@ export default function ChatbotPage() {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder={isAuthenticated ? 'Ask me about coaching services, or say something like "I want to schedule a consultation for tomorrow at 2pm for 1h15min"...' : 'Log in to chat'}
+              placeholder={isAuthenticated ? 'Ask me something!' : 'Log in to chat'}
               disabled={!isAuthenticated || isSending}
               className={`w-full bg-black/10 backdrop-blur-md border border-white/20 rounded-xl py-3 pl-4 pr-24 text-white placeholder:text-white/50 focus:outline-none focus:ring focus:ring-white/30 md:text-base resize-none`}
             />
