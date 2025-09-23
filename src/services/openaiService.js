@@ -68,8 +68,8 @@ WORKFLOW:
 1. Check what's ALREADY PROVIDED from user profile (name, email, phone)
 2. Parse user request for: dates ("tomorrow", "September 22nd"), times ("2pm", "14:00"), durations ("1h15min", "75 minutes")
 3. Only ask for MISSING information - don't ask for what you already know!
-4. Confirm all details before booking
-5. When ready, use this EXACT format:
+4. When you have ALL required info, IMMEDIATELY execute the booking - NO confirmation needed!
+5. Use this EXACT format to execute:
   
   **BOOK_APPOINTMENT**
   Date: YYYY-MM-DD
@@ -81,30 +81,49 @@ WORKFLOW:
 
 EXAMPLE: If user says "I want a consultation tomorrow at 2pm for 1 hour" and profile has name "John Smith" and email "john@email.com":
 - Don't ask for name/email (you already know!)
-- Just confirm: "Perfect John! I'll book your consultation for [date] at 2:00 PM for 1 hour (€90). Should I proceed?"
+- IMMEDIATELY execute: "Perfect John! Creating your consultation for [date] at 2:00 PM for 1 hour (€90)..." then execute **BOOK_APPOINTMENT**
 
-**For Coaching Subscriptions:**
-- Understand plan requests: "basic", "standard", "premium"
-- Ask for contact details if needed
-- When ready, use format:
+**For Coaching Subscriptions - SMART CHECKLIST APPROACH:**
+Required info: Plan, Name, Email, Phone (optional)
+
+WORKFLOW:
+1. Check what's ALREADY PROVIDED from user profile (name, email, phone)
+2. Parse user request for plan: "basic" (€40/month), "standard" (€90/month), "premium" (€230/month)
+3. Only ask for MISSING information - don't ask for what you already know!
+4. When you have ALL required info, IMMEDIATELY execute the subscription - NO confirmation needed!
+5. Use this EXACT format to execute:
   
   **BOOK_SUBSCRIPTION**
   Plan: [basic/standard/premium]
-  Name: [user's name]
-  Email: [user's email]
-  Phone: [user's phone or "not provided"]
+  Name: [use profile name or ask if not available]
+  Email: [use profile email or ask if not available]
+  Phone: [use profile phone or "not provided" if not given]
 
-**For Pitch Decks:**
-- Understand project requests: "GalowClub" or "Perspectiv"
-- Ask for contact details and role/title
-- When ready, use format:
+EXAMPLE: If user says "I want the premium plan" and profile has name "John Smith" and email "john@email.com":
+- Don't ask for name/email (you already know!)
+- IMMEDIATELY execute: "Perfect John! Setting up your Premium coaching subscription (€230/month)..." then execute **BOOK_SUBSCRIPTION**
+
+**For Pitch Decks - SMART CHECKLIST APPROACH:**
+Required info: Project, Name, Email, Phone (optional), Role
+
+WORKFLOW:
+1. Check what's ALREADY PROVIDED from user profile (name, email, phone)
+2. Parse user request for project: "GalowClub" (fitness platform) or "Perspectiv" (AI analytics)
+3. Only ask for MISSING information - don't ask for what you already know!
+4. If role/title not provided, ask for it ONCE, then immediately execute
+5. When you have ALL required info, IMMEDIATELY execute the request - NO confirmation needed!
+6. Use this EXACT format to execute:
   
   **REQUEST_PITCH_DECK**
   Project: [GalowClub/Perspectiv]
-  Name: [user's name]
-  Email: [user's email]
-  Phone: [user's phone or "not provided"]
-  Role: [user's role/title]
+  Name: [use profile name or ask if not available]
+  Email: [use profile email or ask if not available]
+  Phone: [use profile phone or "not provided" if not given]
+  Role: [user's role/title or ask if not provided]
+
+EXAMPLE: If user says "I want the GalowClub pitch deck, I'm an investor" and profile has name "John Smith" and email "john@email.com":
+- Don't ask for name/email (you already know!)
+- IMMEDIATELY execute: "Perfect John! Requesting the GalowClub pitch deck for investor review..." then execute **REQUEST_PITCH_DECK**
 
 Remember: You represent Daniel DaGalow's brand. Be helpful, insightful, and professional while encouraging users toward their goals.`;
   }
@@ -157,11 +176,17 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
         throw new Error('No response received from OpenAI');
       }
 
+      console.log('🔍 OpenAI Service: Raw AI response:', response);
+      console.log('🔍 OpenAI Service: Checking for booking commands...');
+
       // Check if the AI wants to execute a booking
       const bookingResult = await this.processBookingCommand(response, userId, userProfile);
       if (bookingResult) {
+        console.log('🔍 OpenAI Service: Booking command executed, returning result:', bookingResult);
         return bookingResult;
       }
+
+      console.log('🔍 OpenAI Service: No booking commands found, returning normal response');
 
       return {
         success: true,
@@ -224,11 +249,17 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
    */
   async processBookingCommand(response, userId, userProfile = null) {
     try {
+      console.log('🔍 OpenAI Service: Processing booking command...');
+      console.log('🔍 OpenAI Service: Response contains BOOK_APPOINTMENT:', response.includes('**BOOK_APPOINTMENT**'));
+      console.log('🔍 OpenAI Service: Response contains BOOK_SUBSCRIPTION:', response.includes('**BOOK_SUBSCRIPTION**'));
+      console.log('🔍 OpenAI Service: Response contains REQUEST_PITCH_DECK:', response.includes('**REQUEST_PITCH_DECK**'));
+      
       // Import mcpClient dynamically to avoid circular imports
       const { mcpClient } = await import('./mcpClient.js');
       
       // Check for appointment booking
       if (response.includes('**BOOK_APPOINTMENT**')) {
+        console.log('🔍 OpenAI Service: Found BOOK_APPOINTMENT command');
         const appointmentData = this.parseBookingData(response, 'BOOK_APPOINTMENT');
         if (appointmentData && appointmentData.Date && appointmentData.Time && appointmentData.Duration) {
           
@@ -247,14 +278,9 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
             
             console.log('🔍 OpenAI Service: Booking appointment with data:', bookingData);
             
-            // Try payment booking first, fallback to direct booking
-            let result;
-            try {
-              result = await mcpClient.scheduleAppointmentWithPayment(bookingData);
-            } catch (paymentError) {
-              console.log('Payment booking failed, trying direct booking:', paymentError.message);
-              result = await mcpClient.scheduleAppointment(bookingData);
-            }
+            // For chat bookings, always use direct method that provides URLs
+            console.log('🔍 OpenAI Service: Using direct booking method for chat URLs...');
+            const result = await mcpClient.scheduleAppointment(bookingData);
             
             return {
               success: true,
@@ -274,7 +300,10 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
       
       // Check for subscription booking
       if (response.includes('**BOOK_SUBSCRIPTION**')) {
+        console.log('🔍 OpenAI Service: Found BOOK_SUBSCRIPTION command');
         const subscriptionData = this.parseBookingData(response, 'BOOK_SUBSCRIPTION');
+        console.log('🔍 OpenAI Service: Parsed subscription data:', subscriptionData);
+        
         if (subscriptionData && subscriptionData.Plan) {
           
           try {
@@ -288,14 +317,9 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
             
             console.log('🔍 OpenAI Service: Booking subscription with data:', bookingData);
             
-            // Try payment subscription first, fallback to direct subscription
-            let result;
-            try {
-              result = await mcpClient.subscribeToCoachingWithPayment(bookingData);
-            } catch (paymentError) {
-              console.log('Payment subscription failed, trying direct subscription:', paymentError.message);
-              result = await mcpClient.subscribeToCoaching(bookingData);
-            }
+            // For chat bookings, always use direct method that provides URLs
+            console.log('🔍 OpenAI Service: Using direct subscription method for chat URLs...');
+            const result = await mcpClient.subscribeToCoaching(bookingData);
             
             return {
               success: true,
@@ -315,7 +339,10 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
       
       // Check for pitch deck request
       if (response.includes('**REQUEST_PITCH_DECK**')) {
+        console.log('🔍 OpenAI Service: Found REQUEST_PITCH_DECK command');
         const pitchData = this.parseBookingData(response, 'REQUEST_PITCH_DECK');
+        console.log('🔍 OpenAI Service: Parsed pitch deck data:', pitchData);
+        
         if (pitchData && pitchData.Project) {
           
           try {
@@ -329,8 +356,10 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
             };
             
             console.log('🔍 OpenAI Service: Requesting pitch deck with data:', requestData);
+            console.log('🔍 OpenAI Service: User profile data used:', userProfile);
             
             const result = await mcpClient.requestPitchDeck(requestData);
+            console.log('🔍 OpenAI Service: Pitch deck request result:', result);
             
             return {
               success: true,

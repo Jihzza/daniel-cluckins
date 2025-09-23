@@ -204,7 +204,3 @@ This project is private and proprietary. All rights reserved.
 ## 📞 Support
 
 For technical support or questions about the platform, please contact the development team.
-
----
-
-**Built with ❤️ for Daniel DaGalow's coaching business**
