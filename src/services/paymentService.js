@@ -35,7 +35,9 @@ class PaymentService {
         },
         body: JSON.stringify({
           type: 'appointment',
-          ...appointmentData
+          ...appointmentData,
+          returnTo: appointmentData.returnTo || '/chat?payment=success&type=appointment',
+          cancelReturnTo: appointmentData.cancelReturnTo || '/chat?payment=cancelled&type=appointment'
         }),
       });
 
@@ -63,7 +65,9 @@ class PaymentService {
         },
         body: JSON.stringify({
           type: 'subscription',
-          ...subscriptionData
+          ...subscriptionData,
+          returnTo: subscriptionData.returnTo || `/chat?payment=success&type=subscription&plan=${subscriptionData.plan}`,
+          cancelReturnTo: subscriptionData.cancelReturnTo || '/chat?payment=cancelled&type=subscription'
         }),
       });
 

@@ -323,8 +323,8 @@ class MCPClient {
           quantity: 1,
         }],
         mode: 'payment',
-        success_url: `${baseUrl}/chatbot?payment=success&type=appointment&date=${appointmentData.date}&time=${appointmentData.startTime}&duration=${appointmentData.durationMinutes}`,
-        cancel_url: `${baseUrl}/chatbot?payment=cancelled&type=appointment`,
+        success_url: `${baseUrl}/chat?payment=success&type=appointment&date=${appointmentData.date}&time=${appointmentData.startTime}&duration=${appointmentData.durationMinutes}`,
+        cancel_url: `${baseUrl}/chat?payment=cancelled&type=appointment`,
         metadata: {
           userId: appointmentData.userId,
           appointmentData: JSON.stringify(appointmentData),

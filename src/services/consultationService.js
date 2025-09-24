@@ -64,7 +64,9 @@ class ConsultationService {
       // Create Stripe checkout session (appointment will be created after payment)
       const sessionId = await paymentService.createAppointmentCheckout({
         ...appointmentData,
-        appointmentId: 'pending' // Will be created after payment
+        appointmentId: 'pending', // Will be created after payment
+        returnTo: '/chat?payment=success&type=appointment',
+        cancelReturnTo: '/chat?payment=cancelled&type=appointment'
       });
       
       // Redirect to Stripe checkout
@@ -180,8 +182,8 @@ class ConsultationService {
           quantity: 1,
         }],
         mode: 'payment',
-        success_url: `${baseUrl}/chatbot?payment=success&type=appointment&date=${appointmentData.date}&time=${appointmentData.startTime}&duration=${appointmentData.durationMinutes}`,
-        cancel_url: `${baseUrl}/chatbot?payment=cancelled&type=appointment`,
+        success_url: `${baseUrl}/chat?payment=success&type=appointment&date=${appointmentData.date}&time=${appointmentData.startTime}&duration=${appointmentData.durationMinutes}`,
+        cancel_url: `${baseUrl}/chat?payment=cancelled&type=appointment`,
         metadata: {
           userId: appointmentData.userId,
           appointmentData: JSON.stringify(appointmentData),
@@ -225,6 +227,8 @@ class ConsultationService {
           formData,
           userId: appointmentData.userId,
           userEmail: appointmentData.contactEmail,
+          returnTo: '/chat?payment=success&type=appointment',
+          cancelReturnTo: '/chat?payment=cancelled&type=appointment',
         }),
       });
 

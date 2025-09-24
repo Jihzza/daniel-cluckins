@@ -62,7 +62,11 @@ class CoachingService {
       const price = paymentService.getSubscriptionPrice(subscriptionData.plan);
       
       // Create Stripe checkout session (subscription will be created after payment)
-      const sessionId = await paymentService.createSubscriptionCheckout(subscriptionData);
+      const sessionId = await paymentService.createSubscriptionCheckout({
+        ...subscriptionData,
+        returnTo: `/chat?payment=success&type=subscription&plan=${subscriptionData.plan}`,
+        cancelReturnTo: '/chat?payment=cancelled&type=subscription'
+      });
       
       // Redirect to Stripe checkout
       await paymentService.redirectToCheckout(sessionId);
@@ -203,6 +207,8 @@ class CoachingService {
           formData,
           userId: subscriptionData.userId,
           userEmail: subscriptionData.email,
+          returnTo: `/chat?payment=success&type=subscription&plan=${subscriptionData.plan}`,
+          cancelReturnTo: '/chat?payment=cancelled&type=subscription',
         }),
       });
 

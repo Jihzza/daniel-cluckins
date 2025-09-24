@@ -1,6 +1,6 @@
 // src/App.jsx
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import Layout from './components/layout/Layout';
 import HomePage from './pages/HomePage';
@@ -90,6 +90,7 @@ function App() {
             path="/chat"
             element={<ProtectedRoute><ChatbotPage /></ProtectedRoute>}
           />
+          <Route path="/chatbot" element={<Navigate to="/chat" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>
