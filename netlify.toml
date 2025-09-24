@@ -6,9 +6,6 @@
 
 # Environment Variables
 [build.environment]
-  VITE_N8N_WELCOME_WEBHOOK_URL = "https://rafaello.app.n8n.cloud/webhook/decision"
-  N8N_FILTER_WEBHOOK_URL = "https://rafaello.app.n8n.cloud/webhook/filter"
-  N8N_DECISION_WEBHOOK_URL = "https://rafaello.app.n8n.cloud/webhook/brain"
 
 # Redirects and Rewrites
 [[redirects]]

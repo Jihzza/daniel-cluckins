@@ -37,6 +37,7 @@ export default function ChatbotPage() {
 
   const [messages, setMessages] = useState(() => []);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
@@ -52,6 +53,10 @@ export default function ChatbotPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Keep a ref to the latest messages to guard async welcome
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Keep storages in sync when sessionId changes
   useEffect(() => {
@@ -73,6 +78,7 @@ export default function ChatbotPage() {
         return; // wait until auth is ready to avoid RLS errors
       }
 
+      setIsLoadingMessages(true);
       try {
         const { data: authUserData } = await supabase.auth.getUser();
         console.log('[Chatbot] loadMessages: querying', {
@@ -92,6 +98,7 @@ export default function ChatbotPage() {
 
       if (error) {
         console.error('[Chatbot] Error loading messages:', error);
+        setIsLoadingMessages(false);
         return;
       }
 
@@ -103,6 +110,7 @@ export default function ChatbotPage() {
       } else {
         console.log('[Chatbot] loadMessages: no rows for this session');
       }
+      setIsLoadingMessages(false);
     };
 
     loadMessages();
@@ -110,12 +118,13 @@ export default function ChatbotPage() {
 
   // Show welcome message only if no messages loaded
   useEffect(() => {
-    if (isAuthenticated && messages.length === 0 && !hasShownWelcome && !isGenerating.current) {
+    if (isAuthenticated && messages.length === 0 && !hasShownWelcome && !isGenerating.current && !isLoadingMessages) {
       console.log('[Chatbot] welcome guard passed', {
         isAuthenticated,
         messagesLen: messages.length,
         hasShownWelcome,
-        isGenerating: isGenerating.current
+        isGenerating: isGenerating.current,
+        isLoadingMessages
       });
       isGenerating.current = true;
 
@@ -124,6 +133,12 @@ export default function ChatbotPage() {
           const sid = sessionIdRef.current || sessionId;
           console.log('[Chatbot] showWelcome: start', { sid });
           
+          // If messages arrived while we waited, abort
+          if (messagesRef.current.length > 0) {
+            console.log('[Chatbot] showWelcome: aborting, messages already loaded');
+            return;
+          }
+
           // Check for existing welcome in DB
           const { data: existingWelcome, error: checkError } = await supabase
             .from('chatbot_conversations')
@@ -149,21 +164,11 @@ export default function ChatbotPage() {
             
             welcomeMessage = await openaiService.getWelcomeMessage(user?.id, userProfile);
             
-            // Insert only if generation succeeds
-            const { error: insertError } = await supabase
-              .from('chatbot_conversations')
-              .insert({
-                session_id: sid,
-                user_id: user?.id || null,
-                role: 'assistant',
-                content: welcomeMessage,
-                created_at: new Date().toISOString(),
-                is_welcome: true
-              });
-
-            if (insertError) {
-              console.error('Error storing welcome:', insertError);
-              // If insert fails (e.g., duplicate), re-query to get the existing one
+            // Store welcome message using the same upsert logic
+            const stored = await storeMessage(sid, 'assistant', welcomeMessage, true);
+            if (!stored) {
+              console.log('Welcome message storage failed, checking for existing...');
+              // If store fails (e.g., duplicate), re-query to get the existing one
               const { data: fallbackExisting } = await supabase
                 .from('chatbot_conversations')
                 .select('content')
@@ -177,8 +182,13 @@ export default function ChatbotPage() {
             welcomeMessage = "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?";
           }
 
-          console.log('[Chatbot] showWelcome: setting messages to single welcome');
-          setMessages([{ role: 'assistant', content: welcomeMessage }]);
+          // Double-check again before setting welcome to avoid race
+          if (messagesRef.current.length === 0) {
+            console.log('[Chatbot] showWelcome: setting messages to single welcome');
+            setMessages([{ role: 'assistant', content: welcomeMessage }]);
+          } else {
+            console.log('[Chatbot] showWelcome: skipped setting welcome, messages present');
+          }
         } catch (error) {
           console.error('Error showing welcome message:', error);
           setMessages([{ 
@@ -239,6 +249,107 @@ export default function ChatbotPage() {
     }
   }, []); // Removed the pending_welcome_message effect
 
+  // Helper to create idempotency key for messages
+  const createMessageKey = (sessionId, role, content, isWelcome = false) => {
+    const data = `${sessionId}:${role}:${content}:${isWelcome}`;
+    // Simple hash function (you could use crypto.subtle.digest for better hashing)
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(36);
+  };
+
+  // Helper to check for recent duplicates (temporary until migration)
+  const existsRecentDuplicate = async (sessionId, role, content, isWelcome = false) => {
+    try {
+      const { data, error } = await supabase
+        .from('chatbot_conversations')
+        .select('id, created_at')
+        .eq('session_id', sessionId)
+        .eq('role', role)
+        .eq('content', content)
+        .eq('is_welcome', isWelcome)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) return false;
+      if (!data) return false;
+      
+      const createdAt = new Date(data.created_at).getTime();
+      const now = Date.now();
+      return now - createdAt < 5000; // consider duplicate if within 5 seconds
+    } catch (_e) {
+      return false;
+    }
+  };
+
+  // Helper to store message with fallback approach
+  const storeMessage = async (sessionId, role, content, isWelcome = false) => {
+    const messageKey = createMessageKey(sessionId, role, content, isWelcome);
+    
+    try {
+      // First, try the new upsert approach (works after migration)
+      const { error: upsertError } = await supabase
+        .from('chatbot_conversations')
+        .upsert({
+          message_key: messageKey,
+          session_id: sessionId,
+          user_id: user?.id || null,
+          role,
+          content,
+          created_at: new Date().toISOString(),
+          is_welcome: isWelcome
+        }, {
+          onConflict: 'message_key',
+          ignoreDuplicates: true
+        });
+
+      // If upsert works (migration completed), we're done
+      if (!upsertError) {
+        console.log(`✅ ${role} message stored with upsert (migration completed)`);
+        return true;
+      }
+
+      // If upsert fails (likely due to missing message_key column), fall back to old method
+      console.log(`⚠️ Upsert failed, falling back to insert + duplicate check:`, upsertError.message);
+      
+      // Check for recent duplicates to avoid doubles
+      const isDuplicate = await existsRecentDuplicate(sessionId, role, content, isWelcome);
+      if (isDuplicate) {
+        console.log(`🔄 Skipping duplicate ${role} message`);
+        return true; // Consider it successful since message already exists
+      }
+
+      // Try regular insert as fallback
+      const { error: insertError } = await supabase
+        .from('chatbot_conversations')
+        .insert({
+          session_id: sessionId,
+          user_id: user?.id || null,
+          role,
+          content,
+          created_at: new Date().toISOString(),
+          is_welcome: isWelcome
+        });
+
+      if (insertError) {
+        console.error(`❌ Error storing ${role} message with fallback insert:`, insertError);
+        return false;
+      }
+
+      console.log(`✅ ${role} message stored with fallback insert`);
+      return true;
+
+    } catch (err) {
+      console.error(`💥 Exception storing ${role} message:`, err);
+      return false;
+    }
+  };
+
   const handleSend = async () => {
     if (!canSend) return;
 
@@ -248,33 +359,28 @@ export default function ChatbotPage() {
     setInputValue('');
     const sid = sessionIdRef.current || sessionId;
 
-    // Add user message to state
-    setMessages((prev) => {
-      const newMessages = [...prev, { role: 'user', content }];
-      // Store user message in DB
-      supabase.from('chatbot_conversations').insert({
-        session_id: sid,
-        user_id: user?.id || null,
-        role: 'user',
-        content,
-        created_at: new Date().toISOString(),
-        is_welcome: false
-      }).then(({ error }) => {
-        if (error) console.error('Error storing user message:', error);
-      });
-      return newMessages;
-    });
+    // 1) Optimistically update UI with user message
+    setMessages((prev) => [...prev, { role: 'user', content }]);
+
+    // 2) Store user message in DB (outside of state updater)
+    const userStorePromise = storeMessage(sid, 'user', content, false);
 
     setIsSending(true);
 
     try {
       if (!openaiService.isConfigured()) {
-        setMessages((prev) => [...prev, { 
-          role: 'assistant', 
-          content: "I'm currently not configured to handle questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY)." 
-        }]);
+        const errorMessage = "I'm currently not configured to handle questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY).";
+        
+        // Update UI immediately
+        setMessages((prev) => [...prev, { role: 'assistant', content: errorMessage }]);
+        
+        // Store error message in DB
+        await storeMessage(sid, 'assistant', errorMessage, false);
         return;
       }
+
+      // Wait for user message to be stored before proceeding
+      await userStorePromise;
 
       // Create the complete conversation including the current user message
       const currentConversation = [...messages, { role: 'user', content }];
@@ -288,30 +394,23 @@ export default function ChatbotPage() {
       const response = await openaiService.getChatResponse(currentConversation, user?.id, userProfile);
       
       if (response.success) {
-        setMessages((prev) => {
-          const newMessages = [...prev, { role: 'assistant', content: response.content }];
-          // Store assistant message in DB
-          supabase.from('chatbot_conversations').insert({
-            session_id: sid,
-            user_id: user?.id || null,
-            role: 'assistant',
-            content: response.content,
-            created_at: new Date().toISOString(),
-            is_welcome: false
-          }).then(({ error }) => {
-            if (error) console.error('Error storing assistant message:', error);
-          });
-          return newMessages;
-        });
+        // 1) Update UI with assistant message
+        setMessages((prev) => [...prev, { role: 'assistant', content: response.content }]);
+        
+        // 2) Store assistant message in DB (outside of state updater)
+        await storeMessage(sid, 'assistant', response.content, false);
       } else {
         throw new Error('Failed to get AI response');
       }
     } catch (aiError) {
       console.error('AI response error:', aiError);
-      setMessages((prev) => [...prev, { 
-        role: 'assistant', 
-        content: "Sorry, I'm having trouble responding right now. Please try again later." 
-      }]);
+      const errorMessage = "Sorry, I'm having trouble responding right now. Please try again later.";
+      
+      // Update UI
+      setMessages((prev) => [...prev, { role: 'assistant', content: errorMessage }]);
+      
+      // Store error message in DB
+      await storeMessage(sid, 'assistant', errorMessage, false);
     } finally {
       setIsSending(false);
     }
