@@ -1,68 +1,29 @@
 // src/services/pitchDeckService.js
-// Pitch deck request service extracted from MCP Client
+// Pitch deck request service
 
 class PitchDeckService {
   /**
-   * Request a pitch deck using the MCP server
+   * Request a pitch deck (always uses direct Supabase for reliability)
    */
   async requestPitchDeck(pitchData) {
     try {
-      // Validate required fields
-      const requiredFields = ['project'];
-      const missingFields = requiredFields.filter(field => !pitchData[field]);
+      console.log('🔍 PitchDeck Service: Starting pitch deck request with data:', pitchData);
       
-      if (missingFields.length > 0) {
-        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Validate project is one of the allowed values
-      const allowedProjects = ['GalowClub', 'Perspectiv'];
-      if (!allowedProjects.includes(pitchData.project)) {
-        throw new Error(`Project must be one of: ${allowedProjects.join(', ')}`);
-      }
-
-      // Call the Netlify function for MCP pitch requests
-      try {
-        console.log('🔍 PitchDeck Service: Trying Netlify function for pitch deck request:', pitchData);
-        
-        const response = await fetch('/.netlify/functions/mcp-appointments', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...pitchData,
-            tool: 'request_pitch_deck'
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('🔍 PitchDeck Service: Netlify function failed:', response.status, errorText);
-          throw new Error(`Netlify function failed: ${response.status} - ${errorText}`);
-        }
-
-        const result = await response.json();
-        console.log('🔍 PitchDeck Service: Netlify function success:', result);
-        return result;
-      } catch (fetchError) {
-        console.log('🔍 PitchDeck Service: Netlify function failed, using direct Supabase fallback:', fetchError.message);
-        // Fallback: Direct Supabase call
-        return await this.requestPitchDeckDirect(pitchData);
-      }
+      return await this.requestPitchDeckDirect(pitchData);
     } catch (error) {
       console.error('PitchDeck Service: Error requesting pitch deck:', error);
-      throw error;
+      return {
+        success: false,
+        message: `Sorry, I couldn't process your pitch deck request due to a technical issue: ${error.message}. Please try again or contact support.`
+      };
     }
   }
 
   /**
-   * Direct Supabase fallback for pitch deck request
+   * Direct Supabase insertion for pitch deck request
    */
   async requestPitchDeckDirect(pitchData) {
     try {
-      console.log('🔍 PitchDeck Service: Starting direct pitch deck request with data:', pitchData);
-      
       // Import the existing Supabase client
       const { supabase } = await import('../lib/supabaseClient.js');
       
@@ -72,68 +33,46 @@ class PitchDeckService {
         user_id: pitchData.userId || null,
         name: pitchData.name || 'Not provided',
         email: pitchData.email || 'Not provided',
-        phone: pitchData.phone || 'Not provided', // Temporary workaround for NOT NULL constraint
+        phone: pitchData.phone || 'Not provided',
         role: pitchData.role || 'Not provided',
         status: 'submitted'
       };
 
       console.log('🔍 PitchDeck Service: Inserting pitch request data to database:', insertData);
 
-      // Try insertion with service role bypass for RLS
-      let insertResult;
-      try {
-        const { data, error } = await supabase
-          .from('pitch_requests')
-          .insert([insertData])
-          .select()
-          .single();
-        
-        if (error) {
-          console.error('🔍 PitchDeck Service: First insert attempt failed:', error);
-          
-          // If RLS error, try without user_id to bypass policy
-          if (error.code === '42501' || error.code === 'PGRST116') {
-            console.log('🔍 PitchDeck Service: RLS error detected, trying alternative approach...');
-            
-            // Try again without user_id to bypass RLS policy
-            const alternativeData = { ...insertData, user_id: null };
-            console.log('🔍 PitchDeck Service: Trying without user_id:', alternativeData);
-            
-            const { data: data2, error: error2 } = await supabase
-              .from('pitch_requests')
-              .insert([alternativeData])
-              .select()
-              .single();
-              
-            if (error2) {
-              console.error('🔍 PitchDeck Service: Alternative insert also failed:', error2);
-              throw error2;
-            }
-            
-            insertResult = { data: data2, error: null };
-          } else {
-            throw error;
-          }
-        } else {
-          insertResult = { data, error: null };
-        }
-      } catch (insertError) {
-        console.error('🔍 PitchDeck Service: All insert attempts failed:', insertError);
-        throw insertError;
-      }
-      
-      const { data, error } = insertResult;
+      // Try insertion
+      let { data, error } = await supabase
+        .from('pitch_requests')
+        .insert([insertData])
+        .select()
+        .single();
 
       if (error) {
-        console.error('🔍 PitchDeck Service: Supabase pitch deck insertion failed:', {
-          error: error,
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-          insertData: insertData
-        });
-        throw new Error(`Supabase insert failed: ${error.message} (Code: ${error.code})`);
+        console.error('🔍 PitchDeck Service: First insert attempt failed:', error);
+        
+        // If RLS error, try without user_id
+        if (error.code === '42501' || error.code === 'PGRST116') {
+          console.log('🔍 PitchDeck Service: RLS error detected, trying without user_id...');
+          
+          const alternativeData = { ...insertData, user_id: null };
+          console.log('🔍 PitchDeck Service: Alternative data:', alternativeData);
+          
+          const alternativeResult = await supabase
+            .from('pitch_requests')
+            .insert([alternativeData])
+            .select()
+            .single();
+          
+          data = alternativeResult.data;
+          error = alternativeResult.error;
+          
+          if (error) {
+            console.error('🔍 PitchDeck Service: Alternative insert failed:', error);
+            throw new Error(`Alternative insert failed: ${error.message}`);
+          }
+        } else {
+          throw new Error(`Insert failed: ${error.message}`);
+        }
       }
 
       console.log('🔍 PitchDeck Service: Pitch deck request successfully inserted:', data);
@@ -144,8 +83,11 @@ class PitchDeckService {
         requestId: data.id
       };
     } catch (error) {
-      console.error('PitchDeck Service: Direct Supabase pitch request fallback failed:', error);
-      throw error;
+      console.error('PitchDeck Service: Direct Supabase pitch request failed:', error);
+      return {
+        success: false,
+        message: `Sorry, I couldn't process your pitch deck request due to a technical issue: ${error.message}. Please try again or contact support.`
+      };
     }
   }
 

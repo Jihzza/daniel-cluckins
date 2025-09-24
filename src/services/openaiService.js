@@ -363,6 +363,13 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
             const result = await pitchDeckService.requestPitchDeck(requestData);
             console.log('🔍 OpenAI Service: Pitch deck request result:', result);
             
+            if (!result.success) {
+              return {
+                success: true,
+                content: result.message  // Return error message to user
+              };
+            }
+            
             return {
               success: true,
               content: result.message,
