@@ -124,52 +124,46 @@ export default function Layout() {
   }, []);
 
 
-  // Trigger welcome-message WF on first load to seed chatbot message
+  // Trigger welcome-message on first load to seed chatbot message
   useEffect(() => {
     try {
       const alreadyTriggered = sessionStorage.getItem('welcome_triggered');
       if (alreadyTriggered) return;
 
       const sidKey = 'chatbot-session-id';
-      let sid = sessionStorage.getItem(sidKey);
-      if (!sid) {
-        sid = typeof crypto?.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        sessionStorage.setItem(sidKey, sid);
+      let sessionId = sessionStorage.getItem(sidKey);
+      if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        sessionStorage.setItem(sidKey, sessionId);
       }
 
       sessionStorage.setItem('welcome_triggered', '1');
 
-      const WELCOME_URL = 'https://rafaello.app.n8n.cloud/webhook/welcome-message';
-      const payload = {
-        session_id: sid,
-        user_id: isAuthenticated ? (user?.id ?? null) : null,
-        path: location.pathname,
-        referrer: document.referrer || null,
-        ts: new Date().toISOString(),
-      };
-
-      fetch(WELCOME_URL, {
+      // Call Netlify function
+      fetch('/.netlify/functions/welcome-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        keepalive: true,
+        body: JSON.stringify({
+          session_id: sessionId,
+          user_id: isAuthenticated ? user?.id : null
+        })
       })
         .then(async (res) => {
-          try {
-            const raw = await res.json();
-            const first = Array.isArray(raw) ? raw[0] : raw;
-            const text = first?.content ?? first?.value ?? first?.output ?? '';
-            if (text) {
-              sessionStorage.setItem('pending_welcome_message', text);
-              window.dispatchEvent(new CustomEvent('welcomeMessageReady'));
-            }
-          } catch {}
+          if (!res.ok) throw new Error('Failed to generate welcome');
+          const { content } = await res.json();
+          sessionStorage.setItem('pending_welcome_message', content);
+          window.dispatchEvent(new CustomEvent('welcomeMessageReady'));
         })
-        .catch(() => {});
-    } catch {}
-  }, [isAuthenticated, user?.id, location.pathname]);
+        .catch((error) => {
+          console.error('Error fetching welcome:', error);
+          const fallback = '👋 Welcome! I\'m here to help with Daniel\'s coaching services. What can I do for you?';
+          sessionStorage.setItem('pending_welcome_message', fallback);
+          window.dispatchEvent(new CustomEvent('welcomeMessageReady'));
+        });
+    } catch (error) {
+      console.error('Error triggering welcome:', error);
+    }
+  }, [isAuthenticated, user?.id]);
 
   // --- RENDER LOGIC ---
   return (
