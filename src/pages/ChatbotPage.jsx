@@ -130,8 +130,8 @@ export default function ChatbotPage() {
       // The AI will handle bookings, subscriptions, and pitch deck requests through conversation
 
       if (!openaiService.isConfigured()) {
-        setMessages((prev) => [...prev, { 
-          role: 'assistant', 
+            setMessages((prev) => [...prev, { 
+              role: 'assistant', 
           content: "I'm currently not configured to handle questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY)." 
         }]);
         return;

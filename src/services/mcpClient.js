@@ -39,8 +39,6 @@ class MCPClient {
    */
   async scheduleAppointment(appointmentData) {
     try {
-      console.log('🔍 MCP Client: Direct appointment booking for chat URLs...');
-      
       // Validate required fields
       const requiredFields = ['date', 'startTime', 'durationMinutes'];
       const missingFields = requiredFields.filter(field => !appointmentData[field]);
@@ -55,9 +53,30 @@ class MCPClient {
         throw new Error(`Duration must be one of: ${allowedDurations.join(', ')} minutes`);
       }
 
-      // For chat bookings, always use direct method that provides URLs
-      console.log('🔍 MCP Client: Using direct method for chat-friendly checkout URLs...');
-      return await this.scheduleAppointmentDirect(appointmentData);
+      // Call the Netlify function for MCP appointments
+      try {
+        const response = await fetch('/.netlify/functions/mcp-appointments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...appointmentData,
+            tool: 'schedule_appointment'
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to schedule appointment');
+        }
+
+        const result = await response.json();
+        return result;
+      } catch (fetchError) {
+        // Fallback: Direct Supabase call (for development/testing)
+        return await this.scheduleAppointmentDirect(appointmentData);
+      }
     } catch (error) {
       console.error('MCP Client: Error scheduling appointment:', error);
       throw error;
@@ -97,8 +116,6 @@ class MCPClient {
    */
   async subscribeToCoaching(subscriptionData) {
     try {
-      console.log('🔍 MCP Client: Direct subscription booking for chat URLs...');
-      
       // Validate required fields
       const requiredFields = ['userId', 'plan'];
       const missingFields = requiredFields.filter(field => !subscriptionData[field]);
@@ -113,9 +130,30 @@ class MCPClient {
         throw new Error(`Plan must be one of: ${allowedPlans.join(', ')}`);
       }
 
-      // For chat bookings, always use direct method that provides URLs
-      console.log('🔍 MCP Client: Using direct method for chat-friendly checkout URLs...');
-      return await this.subscribeToCoachingDirect(subscriptionData);
+      // Call the Netlify function for MCP subscriptions
+      try {
+        const response = await fetch('/.netlify/functions/mcp-appointments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...subscriptionData,
+            tool: 'subscribe_coaching'
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create subscription');
+        }
+
+        const result = await response.json();
+        return result;
+      } catch (fetchError) {
+        // Fallback: Direct Supabase call
+        return await this.subscribeToCoachingDirect(subscriptionData);
+      }
     } catch (error) {
       console.error('MCP Client: Error creating subscription:', error);
       throw error;
@@ -394,19 +432,9 @@ class MCPClient {
         // Try to create a Stripe checkout session for direct payment
         try {
           const checkoutUrl = await this.createCheckoutLink(appointmentData, priceEUR);
-          
-          // Schedule confirmation email (will be sent after payment success)
-          try {
-            const { emailService } = await import('./emailService.js');
-            await emailService.sendAppointmentConfirmation(appointmentData);
-          } catch (emailError) {
-            console.error('Email scheduling failed:', emailError);
-            // Don't fail the booking if email fails
-          }
-          
         return {
           success: true,
-          message: `✅ Perfect! I'll schedule your consultation for ${appointmentData.date} at ${appointmentData.startTime} for ${appointmentData.durationMinutes} minutes.${contactLine}\n\n💰 **Price: €${priceEUR.toFixed(2)}**\n\n💳 **Payment Required:**\n[🛒 Click here to complete payment and confirm your booking](${checkoutUrl})\n\n*This will redirect you to Stripe's secure checkout page.*\n\n📧 **Confirmation:** You'll receive a confirmation email after successful payment.`,
+          message: `✅ Perfect! I'll schedule your consultation for ${appointmentData.date} at ${appointmentData.startTime} for ${appointmentData.durationMinutes} minutes.${contactLine}\n\n💰 **Price: €${priceEUR.toFixed(2)}**\n\n💳 **Payment Required:**\n[🛒 Click here to complete payment and confirm your booking](${checkoutUrl})\n\n*This will redirect you to Stripe's secure checkout page.*`,
           appointmentId: 'pending-payment',
           checkoutUrl: checkoutUrl
         };
@@ -465,18 +493,9 @@ class MCPClient {
         const checkoutUrl = await this.createSubscriptionCheckoutLink(subscriptionData, priceEUR);
         console.log('🔍 MCP Client: Checkout URL created successfully:', checkoutUrl);
         
-        // Schedule confirmation email (will be sent after payment success)
-        try {
-          const { emailService } = await import('./emailService.js');
-          await emailService.sendSubscriptionConfirmation(subscriptionData);
-        } catch (emailError) {
-          console.error('Email scheduling failed:', emailError);
-          // Don't fail the booking if email fails
-        }
-        
         return {
           success: true,
-          message: `✅ Perfect! I'll set up your ${subscriptionData.plan} coaching subscription.${subscriptionData.name ? `\n\n👤 **Name:** ${subscriptionData.name}` : ''}${subscriptionData.email ? `\n📧 **Email:** ${subscriptionData.email}` : ''}\n\n💰 **Price: €${priceEUR}/month**\n\n💳 **Payment Required:**\n[🛒 Click here to complete payment and activate your subscription](${checkoutUrl})\n\n*This will redirect you to Stripe's secure checkout page.*\n\n📧 **Confirmation:** You'll receive a welcome email after successful payment.`,
+          message: `✅ Perfect! I'll set up your ${subscriptionData.plan} coaching subscription.${subscriptionData.name ? `\n\n👤 **Name:** ${subscriptionData.name}` : ''}${subscriptionData.email ? `\n📧 **Email:** ${subscriptionData.email}` : ''}\n\n💰 **Price: €${priceEUR}/month**\n\n💳 **Payment Required:**\n[🛒 Click here to complete payment and activate your subscription](${checkoutUrl})\n\n*This will redirect you to Stripe's secure checkout page.*`,
           subscriptionId: 'pending-payment',
           checkoutUrl: checkoutUrl
         };
@@ -613,19 +632,9 @@ class MCPClient {
 
       console.log('🔍 MCP Client: Pitch deck request successfully inserted:', data);
 
-      // Send pitch deck immediately (it's free)
-      try {
-        const { emailService } = await import('./emailService.js');
-        const emailResult = await emailService.sendPitchDeck(pitchData);
-        console.log('🔍 MCP Client: Pitch deck email result:', emailResult);
-      } catch (emailError) {
-        console.error('Email sending failed:', emailError);
-        // Don't fail the request if email fails
-      }
-
       return {
         success: true,
-        message: `✅ Perfect! Your ${pitchData.project} pitch deck request has been submitted.${pitchData.name ? `\n\n👤 **Name:** ${pitchData.name}` : ''}${pitchData.email ? `\n📧 **Email:** ${pitchData.email}` : ''}${pitchData.role ? `\n💼 **Role:** ${pitchData.role}` : ''}\n\n📧 **Delivery:** The pitch deck will be sent to your email address within the next few minutes.`,
+        message: `✅ Perfect! Your ${pitchData.project} pitch deck request has been submitted.${pitchData.name ? `\n\n👤 **Name:** ${pitchData.name}` : ''}${pitchData.email ? `\n📧 **Email:** ${pitchData.email}` : ''}${pitchData.role ? `\n💼 **Role:** ${pitchData.role}` : ''}\n\n📧 **Next Steps:** We'll send the pitch deck to your email address within 24 hours.`,
         requestId: data.id
       };
     } catch (error) {
