@@ -67,16 +67,45 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick }
   
   // Chatbot unread badge
   const [hasPendingWelcome, setHasPendingWelcome] = useState(false);
+  const [welcomePreview, setWelcomePreview] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
+  const popupTimeoutRef = useRef(null);
+
   useEffect(() => {
     const pending = sessionStorage.getItem('pending_welcome_message');
-    if (pending) setHasPendingWelcome(true);
-    const onReady = () => setHasPendingWelcome(true);
-    const onConsumed = () => setHasPendingWelcome(false);
+    if (pending) {
+      setHasPendingWelcome(true);
+      setWelcomePreview(pending);
+      setShowPopup(true);
+      // Auto-hide after 5 seconds if not consumed
+      popupTimeoutRef.current = setTimeout(() => setShowPopup(false), 5000);
+    }
+
+    const onReady = (e) => {
+      const msg = e.detail || sessionStorage.getItem('pending_welcome_message');
+      if (msg) {
+        setHasPendingWelcome(true);
+        setWelcomePreview(msg);
+        setShowPopup(true);
+        if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
+        popupTimeoutRef.current = setTimeout(() => setShowPopup(false), 5000);
+      }
+    };
+
+    const onConsumed = () => {
+      setHasPendingWelcome(false);
+      setWelcomePreview('');
+      setShowPopup(false);
+      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
+    };
+
     window.addEventListener('welcomeMessageReady', onReady);
     window.addEventListener('welcomeMessageConsumed', onConsumed);
+
     return () => {
       window.removeEventListener('welcomeMessageReady', onReady);
       window.removeEventListener('welcomeMessageConsumed', onConsumed);
+      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
     };
   }, []);
 
@@ -268,8 +297,11 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick }
                     alt={item.label}
                     className="w-full h-full object-contain p-[1px] pointer-events-none select-none"
                   />
-                  {item.isChat && hasPendingWelcome && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-black" />
+                  {item.isChat && showPopup && (
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 bg-black/80 text-white text-xs p-2 rounded-lg shadow-lg border border-white/20 pointer-events-none">
+                      <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-black/80" />
+                      {welcomePreview.substring(0, 50)}... {/* Truncate if too long */}
+                    </div>
                   )}
                 </motion.div>
               )}
