@@ -131,11 +131,13 @@ export default function Layout() {
       if (alreadyTriggered) return;
 
       const sidKey = 'chatbot-session-id';
-      let sessionId = sessionStorage.getItem(sidKey);
+      let sessionId = sessionStorage.getItem(sidKey) || localStorage.getItem(sidKey);
       if (!sessionId) {
         sessionId = crypto.randomUUID();
-        sessionStorage.setItem(sidKey, sessionId);
       }
+      // Keep both storages in sync
+      try { localStorage.setItem(sidKey, sessionId); } catch {}
+      sessionStorage.setItem(sidKey, sessionId);
 
       sessionStorage.setItem('welcome_triggered', '1');
 

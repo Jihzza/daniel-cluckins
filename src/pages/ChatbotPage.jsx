@@ -11,13 +11,28 @@ export default function ChatbotPage() {
   const { user, isAuthenticated } = useAuth();
 
   const [sessionId, setSessionId] = useState(() => {
-    const cached = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (cached) return cached;
-    const id = typeof crypto?.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    sessionStorage.setItem(SESSION_STORAGE_KEY, id);
-    return id;
+    // Prefer sid from URL, then localStorage, then sessionStorage, else generate new
+    try {
+      const url = new URL(window.location.href);
+      const sidFromUrl = url.searchParams.get('sid');
+      let existing = sidFromUrl || localStorage.getItem(SESSION_STORAGE_KEY) || sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (!existing) {
+        existing = typeof crypto?.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      // Keep both storages in sync for compatibility
+      localStorage.setItem(SESSION_STORAGE_KEY, existing);
+      sessionStorage.setItem(SESSION_STORAGE_KEY, existing);
+      return existing;
+    } catch (_e) {
+      const fallback = typeof crypto?.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem(SESSION_STORAGE_KEY, fallback);
+      try { localStorage.setItem(SESSION_STORAGE_KEY, fallback); } catch {}
+      return fallback;
+    }
   });
 
   const [messages, setMessages] = useState(() => []);
@@ -38,11 +53,36 @@ export default function ChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load existing messages from DB on mount
+  // Keep storages in sync when sessionId changes
+  useEffect(() => {
+    if (!sessionId) return;
+    console.log('Chatbot session_id:', sessionId);
+    try { localStorage.setItem(SESSION_STORAGE_KEY, sessionId); } catch {}
+    sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  }, [sessionId]);
+
+  // Load existing messages when auth/session is ready
   useEffect(() => {
     const loadMessages = async () => {
-      const sessionId = sessionStorage.getItem('chatbot-session-id');
-      if (!sessionId) return;
+      if (!sessionId) {
+        console.log('[Chatbot] loadMessages: no sessionId yet, skipping');
+        return;
+      }
+      if (!isAuthenticated) {
+        console.log('[Chatbot] loadMessages: not authenticated yet, skipping');
+        return; // wait until auth is ready to avoid RLS errors
+      }
+
+      try {
+        const { data: authUserData } = await supabase.auth.getUser();
+        console.log('[Chatbot] loadMessages: querying', {
+          sessionId,
+          isAuthenticated,
+          authUserId: authUserData?.user?.id || null
+        });
+      } catch (e) {
+        console.log('[Chatbot] loadMessages: getUser failed', e);
+      }
 
       const { data, error } = await supabase
         .from('chatbot_conversations')
@@ -51,33 +91,44 @@ export default function ChatbotPage() {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error loading messages:', error);
+        console.error('[Chatbot] Error loading messages:', error);
         return;
       }
 
+      console.log('[Chatbot] loadMessages: rows', data?.length || 0);
       if (data?.length > 0) {
         setMessages(data.map(msg => ({ role: msg.role, content: msg.content })));
-        setHasShownWelcome(true); // If messages exist, assume welcome was shown
+        console.log('[Chatbot] loadMessages: setMessages with DB rows, setting hasShownWelcome=true');
+        setHasShownWelcome(true);
+      } else {
+        console.log('[Chatbot] loadMessages: no rows for this session');
       }
     };
 
     loadMessages();
-  }, []);
+  }, [sessionId, isAuthenticated]);
 
   // Show welcome message only if no messages loaded
   useEffect(() => {
     if (isAuthenticated && messages.length === 0 && !hasShownWelcome && !isGenerating.current) {
+      console.log('[Chatbot] welcome guard passed', {
+        isAuthenticated,
+        messagesLen: messages.length,
+        hasShownWelcome,
+        isGenerating: isGenerating.current
+      });
       isGenerating.current = true;
 
       const showWelcome = async () => {
         try {
-          const sessionId = sessionStorage.getItem('chatbot-session-id');
+          const sid = sessionIdRef.current || sessionId;
+          console.log('[Chatbot] showWelcome: start', { sid });
           
           // Check for existing welcome in DB
           const { data: existingWelcome, error: checkError } = await supabase
             .from('chatbot_conversations')
             .select('content')
-            .eq('session_id', sessionId)
+            .eq('session_id', sid)
             .eq('is_welcome', true)
             .eq('role', 'assistant')
             .limit(1)
@@ -87,6 +138,7 @@ export default function ChatbotPage() {
 
           let welcomeMessage;
           if (existingWelcome) {
+            console.log('[Chatbot] showWelcome: found existing welcome');
             welcomeMessage = existingWelcome.content;
           } else if (openaiService.isConfigured()) {
             const userProfile = user ? {
@@ -101,7 +153,7 @@ export default function ChatbotPage() {
             const { error: insertError } = await supabase
               .from('chatbot_conversations')
               .insert({
-                session_id: sessionId,
+                session_id: sid,
                 user_id: user?.id || null,
                 role: 'assistant',
                 content: welcomeMessage,
@@ -115,7 +167,7 @@ export default function ChatbotPage() {
               const { data: fallbackExisting } = await supabase
                 .from('chatbot_conversations')
                 .select('content')
-                .eq('session_id', sessionId)
+                .eq('session_id', sid)
                 .eq('is_welcome', true)
                 .limit(1)
                 .single();
@@ -125,6 +177,7 @@ export default function ChatbotPage() {
             welcomeMessage = "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?";
           }
 
+          console.log('[Chatbot] showWelcome: setting messages to single welcome');
           setMessages([{ role: 'assistant', content: welcomeMessage }]);
         } catch (error) {
           console.error('Error showing welcome message:', error);
@@ -133,6 +186,7 @@ export default function ChatbotPage() {
             content: "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?" 
           }]);
         } finally {
+          console.log('[Chatbot] showWelcome: finished, setHasShownWelcome(true)');
           setHasShownWelcome(true);
           isGenerating.current = false;
         }
@@ -142,11 +196,21 @@ export default function ChatbotPage() {
     }
   }, [isAuthenticated, messages.length, hasShownWelcome, user?.id]);
 
+  // Maintain a ref for sessionId inside async blocks
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+
   // Handle payment success/cancellation from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const payment = urlParams.get('payment');
     const type = urlParams.get('type');
+    const sid = urlParams.get('sid');
+    if (sid) {
+      console.log('[Chatbot] URL sid found, setting sessionId', sid);
+      setSessionId(sid);
+    }
+    console.log('[Chatbot] payment URL params', { payment, type, sid });
     
     if (payment === 'success') {
       if (type === 'appointment') {
@@ -182,14 +246,14 @@ export default function ChatbotPage() {
     if (!content) return;
 
     setInputValue('');
-    const sessionId = sessionStorage.getItem('chatbot-session-id');
+    const sid = sessionIdRef.current || sessionId;
 
     // Add user message to state
     setMessages((prev) => {
       const newMessages = [...prev, { role: 'user', content }];
       // Store user message in DB
       supabase.from('chatbot_conversations').insert({
-        session_id: sessionId,
+        session_id: sid,
         user_id: user?.id || null,
         role: 'user',
         content,
@@ -228,7 +292,7 @@ export default function ChatbotPage() {
           const newMessages = [...prev, { role: 'assistant', content: response.content }];
           // Store assistant message in DB
           supabase.from('chatbot_conversations').insert({
-            session_id: sessionId,
+            session_id: sid,
             user_id: user?.id || null,
             role: 'assistant',
             content: response.content,

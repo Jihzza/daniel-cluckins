@@ -36,8 +36,17 @@ class PaymentService {
         body: JSON.stringify({
           type: 'appointment',
           ...appointmentData,
-          returnTo: appointmentData.returnTo || '/chat?payment=success&type=appointment',
-          cancelReturnTo: appointmentData.cancelReturnTo || '/chat?payment=cancelled&type=appointment'
+          // Append chat sid so chat can restore the same conversation
+          returnTo: (() => {
+            const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
+            const base = appointmentData.returnTo || '/chat?payment=success&type=appointment';
+            return sid ? `${base}${base.includes('?') ? '&' : '?'}sid=${encodeURIComponent(sid)}` : base;
+          })(),
+          cancelReturnTo: (() => {
+            const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
+            const base = appointmentData.cancelReturnTo || '/chat?payment=cancelled&type=appointment';
+            return sid ? `${base}${base.includes('?') ? '&' : '?'}sid=${encodeURIComponent(sid)}` : base;
+          })()
         }),
       });
 
@@ -66,8 +75,16 @@ class PaymentService {
         body: JSON.stringify({
           type: 'subscription',
           ...subscriptionData,
-          returnTo: subscriptionData.returnTo || `/chat?payment=success&type=subscription&plan=${subscriptionData.plan}`,
-          cancelReturnTo: subscriptionData.cancelReturnTo || '/chat?payment=cancelled&type=subscription'
+          returnTo: (() => {
+            const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
+            const base = subscriptionData.returnTo || `/chat?payment=success&type=subscription&plan=${subscriptionData.plan}`;
+            return sid ? `${base}${base.includes('?') ? '&' : '?'}sid=${encodeURIComponent(sid)}` : base;
+          })(),
+          cancelReturnTo: (() => {
+            const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
+            const base = subscriptionData.cancelReturnTo || '/chat?payment=cancelled&type=subscription';
+            return sid ? `${base}${base.includes('?') ? '&' : '?'}sid=${encodeURIComponent(sid)}` : base;
+          })()
         }),
       });
 

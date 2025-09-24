@@ -65,8 +65,17 @@ class ConsultationService {
       const sessionId = await paymentService.createAppointmentCheckout({
         ...appointmentData,
         appointmentId: 'pending', // Will be created after payment
-        returnTo: '/chat?payment=success&type=appointment',
-        cancelReturnTo: '/chat?payment=cancelled&type=appointment'
+        // Append sid directly as a fallback if called bypassing paymentService default handling
+        returnTo: (() => {
+          const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
+          const base = '/chat?payment=success&type=appointment';
+          return sid ? `${base}&sid=${encodeURIComponent(sid)}` : base;
+        })(),
+        cancelReturnTo: (() => {
+          const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
+          const base = '/chat?payment=cancelled&type=appointment';
+          return sid ? `${base}&sid=${encodeURIComponent(sid)}` : base;
+        })()
       });
       
       // Redirect to Stripe checkout
