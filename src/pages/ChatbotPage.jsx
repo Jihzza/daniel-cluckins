@@ -412,7 +412,7 @@ export default function ChatbotPage() {
               onClick={handleSend}
               disabled={!canSend}
               className={`absolute inset-y-0 right-2 flex items-center justify-center rounded-xl
-      ${canSend ? 'bg-[#BFA200] text-black hover:opacity-90' : 'text-white cursor-not-allowed'}`}
+      ${canSend ? 'cursor-pointer text-white hover:opacity-90' : 'text-white cursor-not-allowed'}`}
               aria-label="Send message"
               title="Send"
               style={{ width: '2.25rem' }}          // ~w-9; keeps a tidy square click target
