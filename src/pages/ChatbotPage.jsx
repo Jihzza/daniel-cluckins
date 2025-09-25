@@ -4,12 +4,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { openaiService } from '../services/openaiService';
 import { supabase } from '../lib/supabaseClient';
+import { useNavigate } from 'react-router-dom';
+import { FiClock, FiPlus, FiSend } from 'react-icons/fi';
+import Input from '../components/common/Forms/Input';
 
 const SESSION_STORAGE_KEY = 'chatbot-session-id';
 
 export default function ChatbotPage() {
   const { user, isAuthenticated } = useAuth();
-
+  const navigate = useNavigate();
   const [sessionId, setSessionId] = useState(() => {
     const cached = sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (cached) return cached;
@@ -26,6 +29,22 @@ export default function ChatbotPage() {
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  // Helper to format timestamps as DD/MM/YYYY, HH:mm:ss
+  const formatTimestamp = (ts) => {
+    try {
+      const date = ts ? new Date(ts) : new Date();
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const yyyy = date.getFullYear();
+      const hh = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      const ss = String(date.getSeconds()).padStart(2, '0');
+      return `${dd}/${mm}/${yyyy}, ${hh}:${min}:${ss}`;
+    } catch {
+      return '';
+    }
+  };
 
   const canSend = useMemo(() => {
     if (!isAuthenticated) return false;
@@ -84,7 +103,7 @@ export default function ChatbotPage() {
 
         const { data, error } = await supabase
           .from('chatbot_conversations')
-          .select('role, content')
+          .select('role, content, created_at')
           .eq('session_id', sid)
           .eq('user_id', user?.id)
           .order('created_at', { ascending: true });
@@ -94,7 +113,7 @@ export default function ChatbotPage() {
         } else if (data && data.length > 0) {
           const mapped = data
             .filter(r => r.role === 'assistant' || r.role === 'user')
-            .map(r => ({ role: r.role, content: r.content }));
+            .map(r => ({ role: r.role, content: r.content, createdAt: r.created_at }));
           setMessages(mapped);
         }
       } catch (e) {
@@ -121,17 +140,17 @@ export default function ChatbotPage() {
           } : null;
 
           const welcomeMessage = await openaiService.getWelcomeMessage(user?.id, userProfile);
-          setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: welcomeMessage }]);
+          setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: welcomeMessage, createdAt: new Date().toISOString() }]);
           await saveChatRow('assistant', welcomeMessage);
         } else {
           const fallback = "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?";
-          setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: fallback }]);
+          setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: fallback, createdAt: new Date().toISOString() }]);
           await saveChatRow('assistant', fallback);
         }
       } catch (error) {
         console.error('Error showing welcome message:', error);
         const fallback = "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?";
-        setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: fallback }]);
+        setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: fallback, createdAt: new Date().toISOString() }]);
         await saveChatRow('assistant', fallback);
       }
       setHasShownWelcome(true);
@@ -151,13 +170,15 @@ export default function ChatbotPage() {
       if (type === 'appointment') {
         setMessages((prev) => [...prev, {
           role: 'assistant',
-          content: '🎉 Payment successful! Your appointment has been confirmed. You will receive a confirmation email shortly.'
+          content: '🎉 Payment successful! Your appointment has been confirmed. You will receive a confirmation email shortly.',
+          createdAt: new Date().toISOString()
         }]);
       } else if (type === 'subscription') {
         const plan = urlParams.get('plan');
         setMessages((prev) => [...prev, {
           role: 'assistant',
-          content: `🎉 Payment successful! Your ${plan} coaching subscription is now active. Welcome to the program!`
+          content: `🎉 Payment successful! Your ${plan} coaching subscription is now active. Welcome to the program!`,
+          createdAt: new Date().toISOString()
         }]);
       }
 
@@ -166,7 +187,8 @@ export default function ChatbotPage() {
     } else if (payment === 'cancelled') {
       setMessages((prev) => [...prev, {
         role: 'assistant',
-        content: 'Payment was cancelled. No charges were made. Feel free to try again anytime!'
+        content: 'Payment was cancelled. No charges were made. Feel free to try again anytime!',
+        createdAt: new Date().toISOString()
       }]);
 
       // Clean up URL
@@ -179,7 +201,7 @@ export default function ChatbotPage() {
     try {
       const msg = sessionStorage.getItem('pending_welcome_message');
       if (msg) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+        setMessages((prev) => [...prev, { role: 'assistant', content: msg, createdAt: new Date().toISOString() }]);
         sessionStorage.removeItem('pending_welcome_message');
         window.dispatchEvent(new CustomEvent('welcomeMessageConsumed'));
       }
@@ -191,7 +213,7 @@ export default function ChatbotPage() {
 
     const content = inputValue.trim();
     setInputValue('');
-    setMessages((prev) => [...prev, { role: 'user', content }]);
+    setMessages((prev) => [...prev, { role: 'user', content, createdAt: new Date().toISOString() }]);
     await saveChatRow('user', content);
     setIsSending(true);
 
@@ -223,7 +245,7 @@ export default function ChatbotPage() {
         const response = await openaiService.getChatResponse(currentConversation, user?.id, userProfile);
 
         if (response.success) {
-          setMessages(prev => [...prev, { role: 'assistant', content: response.content }]);
+          setMessages(prev => [...prev, { role: 'assistant', content: response.content, createdAt: new Date().toISOString() }]);
           await saveChatRow('assistant', response.content);
         } else {
           throw new Error('Failed to get AI response');
@@ -239,13 +261,13 @@ export default function ChatbotPage() {
           errorMessage = "There's a configuration issue with my AI service. Please contact support.";
         }
 
-        setMessages(prev => [...prev, { role: 'assistant', content: errorMessage }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: errorMessage, createdAt: new Date().toISOString() }]);
         await saveChatRow('assistant', errorMessage);
       }
     } catch (err) {
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: 'Network error. Please try again.' },
+        { role: 'assistant', content: 'Network error. Please try again.', createdAt: new Date().toISOString() },
       ]);
       await saveChatRow('assistant', 'Network error. Please try again.');
     } finally {
@@ -264,18 +286,32 @@ export default function ChatbotPage() {
     <div className="flex flex-col h-full bg-[#002147] text-white">
       <header className="sticky top-0 z-10 border-b border-white/10 bg-[#002147]">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Chatbot</h1>
-          <div className="flex items-center gap-2">
-            <div className="text-xs opacity-75 ml-2">Session: {sessionId.slice(0, 8)}</div>
-            <button
-              type="button"
-              onClick={handleNewConversation}
-              className="ml-3 text-xs px-2 py-1 rounded-md bg-[#BFA200] text-black hover:opacity-90"
-              title="Start a new conversation"
-            >
-              New chat
-            </button>
-          </div>
+          {/* Left: History icon -> navigate to history page */}
+          <button
+            type="button"
+            onClick={() => navigate('/chat/history')} // <-- change if needed
+            className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
+            title="Chat history"
+            aria-label="Open chat history"
+          >
+            {/* Clock-arrow (history) icon */}
+            <FiClock />
+          </button>
+
+          {/* Spacer to keep icons at edges */}
+          <div className="flex-1" />
+
+          {/* Right: New conversation (+) */}
+          <button
+            type="button"
+            onClick={handleNewConversation}
+            className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
+            title="New conversation"
+            aria-label="Start a new conversation"
+          >
+            {/* Plus icon */}
+            <FiPlus />
+          </button>
         </div>
       </header>
 
@@ -284,7 +320,7 @@ export default function ChatbotPage() {
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm md:text-base shadow-sm ${m.role === 'user'
+                className={`group max-w-[85%] rounded-2xl px-3 py-2 text-sm md:text-base shadow-sm ${m.role === 'user'
                   ? 'bg-[#BFA200] text-black'
                   : 'bg-black/10 text-white'
                   }`}
@@ -334,6 +370,9 @@ export default function ChatbotPage() {
 
                   return <div key={lineIdx}>{line}</div>;
                 })}
+                <div className={`mt-1 text-[10px] md:text-xs opacity-70 select-none ${m.role === 'user' ? 'text-black/70 text-right' : 'text-white/70'}`}>
+                  {formatTimestamp(m.createdAt)}
+                </div>
               </div>
             </div>
           ))}
@@ -349,34 +388,42 @@ export default function ChatbotPage() {
         </div>
       </main>
 
-      <footer className="border-t border-white/10">
+      <footer>
         <div className="max-w-3xl mx-auto w-full px-3 py-3">
           {!isAuthenticated && (
             <div className="text-xs text-white/70 mb-2">
               Please log in to send messages.
             </div>
           )}
-          <div className="relative flex items-end">
-            <textarea
+
+          {/* Change items-end -> items-center */}
+          <div className="relative">
+            <Input
+              type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              rows={1}
               placeholder={isAuthenticated ? 'Ask me something!' : 'Log in to chat'}
               disabled={!isAuthenticated || isSending}
-              className={`w-full bg-black/10 backdrop-blur-md border border-white/20 rounded-xl py-3 pl-4 pr-24 text-white placeholder:text-white/50 focus:outline-none focus:ring focus:ring-white/30 md:text-base resize-none`}
+              className="h-12 pr-12 md:text-base"   // give the input a clear height + extra right padding
             />
+
             <button
               onClick={handleSend}
               disabled={!canSend}
-              className={`absolute right-2 bottom-2 px-3 py-2 rounded-lg text-sm font-semibold transition ${canSend ? 'bg-[#BFA200] text-black hover:opacity-90' : 'bg-black/10 text-white/50 cursor-not-allowed'
-                }`}
+              className={`absolute inset-y-0 right-2 flex items-center justify-center rounded-xl
+      ${canSend ? 'bg-[#BFA200] text-black hover:opacity-90' : 'text-white cursor-not-allowed'}`}
+              aria-label="Send message"
+              title="Send"
+              style={{ width: '2.25rem' }}          // ~w-9; keeps a tidy square click target
             >
-              Send
+              <FiSend className="text-xl" />
             </button>
           </div>
+
         </div>
       </footer>
+
     </div>
   );
 }

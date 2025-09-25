@@ -23,7 +23,7 @@ const Input = React.forwardRef(({
                     className={`w-full px-3 py-2 pr-10 mt-2 rounded-xl text-white placeholder-gray-400 shadow-lg focus:outline-none bg-[#001B3A] backdrop-blur-md border border-white/20 justify-center items-center flex ${className}`}
                     {...props}
                 />
-                <button qqqqqqqqqwwwwwwwwwwwwwwwwwwwwwwwwwwwwe
+                <button
                     type="button"
                     onClick={onTogglePassword}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
