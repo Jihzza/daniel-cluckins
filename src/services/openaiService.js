@@ -128,6 +128,23 @@ EXAMPLE: If user says "I want the GalowClub pitch deck, I'm an investor" and pro
 - IMMEDIATELY execute: "Perfect John! Requesting the GalowClub pitch deck for investor review..." then execute **REQUEST_PITCH_DECK**
 
 Remember: You represent Daniel DaGalow's brand. Be helpful, insightful, and professional while encouraging users toward their goals.`;
+
+    // Intake mode prompt for post-payment ChatbotStep
+    this.intakeSystemprompt = `
+You are Daniel DaGalow's Intake Assistant. Your ONLY goal is to collect concise, high-signal information BEFORE the session to save the client time and money.
+
+PRINCIPLES:
+- Be brief: one or two focused questions per turn.
+- Never ask for info we already have (use provided profile/context).
+- Prioritize: goals → current status → constraints → timeline → success criteria.
+- Summarize occasionally in bullet points so the user can confirm or edit.
+- Be warm, efficient, and non-salesy. Do not upsell here.
+
+SERVICE-SPECIFIC STARTERS:
+- Consultation: clarify main objective, background, constraints, and desired outcome for the booked duration.
+- Coaching: clarify top 1–2 goals for this month, current habit/routine, and blockers; propose a first-week action check-in.
+- Pitch deck: capture audience, use-case, stage, traction, and key ask (amount, terms).
+`.trim();
   }
 
   /**
@@ -157,7 +174,7 @@ Remember: You represent Daniel DaGalow's brand. Be helpful, insightful, and prof
 - User ID: ${userId}
 
 IMPORTANT: When booking appointments/subscriptions, use this profile data to pre-fill information! Only ask for missing details.`;
-        
+
         formattedMessages[0].content += userInfo;
       } else if (userId) {
         formattedMessages[0].content += `\n\nUser ID: ${userId} (for context, but don't mention this to the user)`;
@@ -173,7 +190,7 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
       });
 
       const response = completion.choices[0]?.message?.content;
-      
+
       if (!response) {
         throw new Error('No response received from OpenAI');
       }
@@ -192,7 +209,7 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
 
     } catch (error) {
       console.error('OpenAI API error:', error);
-      
+
       // Handle specific OpenAI errors
       if (error.code === 'insufficient_quota') {
         throw new Error('OpenAI API quota exceeded. Please check your billing settings.');
@@ -201,7 +218,7 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
       } else if (error.status === 429) {
         throw new Error('Rate limit exceeded. Please try again in a moment.');
       }
-      
+
       // Generic error
       throw new Error(`AI service error: ${error.message || 'Unknown error occurred'}`);
     }
@@ -213,16 +230,16 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
   async getWelcomeMessage(userId = null, userProfile = null) {
     try {
       let welcomePrompt = "Generate a brief, personalized welcome message for someone visiting Daniel DaGalow's coaching platform. Keep it under 50 characters and encouraging.";
-      
+
       // Make it more personalized if we have user info
       if (userProfile && userProfile.full_name) {
         welcomePrompt = `Generate a brief, personalized welcome message for ${userProfile.full_name} visiting Daniel DaGalow's coaching platform. Use their name naturally and keep it under 50 characters and encouraging.`;
       }
-      
-      const systemPromptWithProfile = userProfile ? 
-        `${this.systemPrompt}\n\nUSER PROFILE: Name: ${userProfile.full_name || 'Not provided'}, Email: ${userProfile.email || 'Not provided'}` : 
+
+      const systemPromptWithProfile = userProfile ?
+        `${this.systemPrompt}\n\nUSER PROFILE: Name: ${userProfile.full_name || 'Not provided'}, Email: ${userProfile.email || 'Not provided'}` :
         this.systemPrompt;
-      
+
       const completion = await this.client.chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [
@@ -249,12 +266,12 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
       const { consultationService } = await import('./consultationService.js');
       const { coachingService } = await import('./coachingService.js');
       const { pitchDeckService } = await import('./pitchDeckService.js');
-      
+
       // Check for appointment booking
       if (response.includes('**BOOK_APPOINTMENT**')) {
         const appointmentData = this.parseBookingData(response, 'BOOK_APPOINTMENT');
         if (appointmentData && appointmentData.Date && appointmentData.Time && appointmentData.Duration) {
-          
+
           try {
             // Use profile data if available, otherwise use parsed data
             const bookingData = {
@@ -267,9 +284,9 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
               contactPhone: userProfile?.phone || (appointmentData.Phone === 'not provided' ? null : appointmentData.Phone),
               timezone: 'Europe/Madrid'
             };
-            
+
             console.log('🔍 OpenAI Service: Booking appointment with data:', bookingData);
-            
+
             // Try payment booking first, fallback to direct booking
             let result;
             try {
@@ -278,7 +295,7 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
               console.log('Payment booking failed, trying direct booking:', paymentError.message);
               result = await consultationService.scheduleAppointment(bookingData);
             }
-            
+
             return {
               success: true,
               content: result.message,
@@ -294,15 +311,15 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
           }
         }
       }
-      
+
       // Check for subscription booking
       if (response.includes('**BOOK_SUBSCRIPTION**')) {
         console.log('🔍 OpenAI Service: Found BOOK_SUBSCRIPTION command');
         const subscriptionData = this.parseBookingData(response, 'BOOK_SUBSCRIPTION');
         console.log('🔍 OpenAI Service: Parsed subscription data:', subscriptionData);
-        
+
         if (subscriptionData && subscriptionData.Plan) {
-          
+
           try {
             const bookingData = {
               plan: subscriptionData.Plan.toLowerCase(),
@@ -311,9 +328,9 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
               email: userProfile?.email || subscriptionData.Email || 'Not provided',
               phone: userProfile?.phone || (subscriptionData.Phone === 'not provided' ? null : subscriptionData.Phone)
             };
-            
+
             console.log('🔍 OpenAI Service: Booking subscription with data:', bookingData);
-            
+
             // Try payment subscription first, fallback to direct subscription
             let result;
             try {
@@ -322,7 +339,7 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
               console.log('Payment subscription failed, trying direct subscription:', paymentError.message);
               result = await coachingService.subscribeToCoaching(bookingData);
             }
-            
+
             return {
               success: true,
               content: result.message,
@@ -338,15 +355,15 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
           }
         }
       }
-      
+
       // Check for pitch deck request
       if (response.includes('**REQUEST_PITCH_DECK**')) {
         console.log('🔍 OpenAI Service: Found REQUEST_PITCH_DECK command');
         const pitchData = this.parseBookingData(response, 'REQUEST_PITCH_DECK');
         console.log('🔍 OpenAI Service: Parsed pitch deck data:', pitchData);
-        
+
         if (pitchData && pitchData.Project) {
-          
+
           try {
             const requestData = {
               project: pitchData.Project,
@@ -356,20 +373,20 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
               phone: userProfile?.phone || (pitchData.Phone === 'not provided' ? null : pitchData.Phone),
               role: pitchData.Role || 'Not provided'
             };
-            
+
             console.log('🔍 OpenAI Service: Requesting pitch deck with data:', requestData);
             console.log('🔍 OpenAI Service: User profile data used:', userProfile);
-            
+
             const result = await pitchDeckService.requestPitchDeck(requestData);
             console.log('🔍 OpenAI Service: Pitch deck request result:', result);
-            
+
             if (!result.success) {
               return {
                 success: true,
                 content: result.message  // Return error message to user
               };
             }
-            
+
             return {
               success: true,
               content: result.message,
@@ -385,12 +402,55 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
           }
         }
       }
-      
+
       return null; // No booking command found
     } catch (error) {
       console.error('Error processing booking command:', error);
       return null;
     }
+  }
+
+  /**
+   * Chat with selectable mode ('sales' | 'intake')
+   */
+  async getChatResponseWithMode(messages, { mode = 'sales', userId = null, userProfile = null, intakeContext = null } = {}) {
+    if (!this.client) throw new Error('OpenAI client not initialized. Please check your API key configuration.');
+    const basePrompt = mode === 'intake' ? this.intakeSystemPrompt : this.systemPrompt;
+
+    const formattedMessages = [
+      { role: 'system', content: basePrompt },
+      ...messages.map(m => ({ role: m.role, content: m.content }))
+    ];
+
+    // Stitch in user profile + intake context (without re-asking known data)
+    let profileNote = '';
+    if (userId && userProfile) {
+      profileNote += `\n\nUSER PROFILE:\n- Name: ${userProfile.full_name || 'Not provided'}\n- Email: ${userProfile.email || 'Not provided'}\n- Phone: ${userProfile.phone || 'Not provided'}\n- User ID: ${userId}`;
+    } else if (userId) {
+      profileNote += `\n\nUser ID: ${userId}`;
+    }
+    if (intakeContext) {
+      profileNote += `\n\nINTAKE CONTEXT (do not ask for these again if present):\n${JSON.stringify(intakeContext)}`;
+    }
+    formattedMessages[0].content += profileNote;
+
+    const completion = await this.client.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: formattedMessages,
+      max_tokens: 500,
+      temperature: 0.6,
+      presence_penalty: 0.1,
+      frequency_penalty: 0.1
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    if (!response) throw new Error('No response received from OpenAI');
+
+    // Reuse booking command handling if the assistant still decides to act
+    const bookingResult = await this.processBookingCommand(response, userId, userProfile);
+    if (bookingResult) return bookingResult;
+
+    return { success: true, content: response, usage: completion.usage };
   }
 
   /**
@@ -401,11 +461,11 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
       const startMarker = `**${commandType}**`;
       const startIndex = response.indexOf(startMarker);
       if (startIndex === -1) return null;
-      
+
       // Extract the booking section
       const bookingSection = response.substring(startIndex + startMarker.length);
       const lines = bookingSection.split('\n').filter(line => line.trim() && !line.includes('**'));
-      
+
       const data = {};
       for (const line of lines) {
         const colonIndex = line.indexOf(':');
@@ -417,7 +477,7 @@ IMPORTANT: When booking appointments/subscriptions, use this profile data to pre
           }
         }
       }
-      
+
       return data;
     } catch (error) {
       console.error('Error parsing booking data:', error);

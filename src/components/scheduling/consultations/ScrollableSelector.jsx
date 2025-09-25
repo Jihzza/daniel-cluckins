@@ -53,8 +53,8 @@ export default function ScrollableSelector({ title, options = [], selectedValue,
 
       <div className="relative group">
         {/* gradient edges */}
-        <div className="absolute top-0 bottom-0 left-0 w-8 bg-gradient-to-r from-[#193759] to-transparent z-20 pointer-events-none" />
-        <div className="absolute top-0 bottom-0 right-0 w-8 bg-gradient-to-l from-[#193759] to-transparent z-20 pointer-events-none" />
+        <div className="absolute top-0 bottom-0 left-0 w-8 bg-gradient-to-r from-[#002147] to-transparent z-20 pointer-events-none" />
+        <div className="absolute top-0 bottom-0 right-0 w-8 bg-gradient-to-l from-[#002147] to-transparent z-20 pointer-events-none" />
 
         <div
           ref={containerRef}

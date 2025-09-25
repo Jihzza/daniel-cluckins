@@ -18,6 +18,7 @@ import ContactInfoStep from '../components/scheduling/ContactInfoStep';
 import PaymentStep from '../components/scheduling/PaymentStep';
 import ConfirmationStep from '../components/scheduling/ConfirmationStep';
 import FormTitle from '../components/common/FormsTitle'; // unified step titles
+import ChatbotStep from '../components/scheduling/ChatbotStep';
 
 // COMPONENT DEFINITION
 export default function SchedulingFormPage() {
@@ -150,8 +151,20 @@ export default function SchedulingFormPage() {
       if (!accessToken) throw new Error('User is not authenticated.');
 
       // Build dynamic return targets back to the scheduling flow
-      const successReturnPath = `/schedule?payment_status=success`;
-      const cancelReturnPath = `/schedule?payment_status=cancelled`;
+      const svc = formData.serviceType;
+      const plan = formData.coaching?.plan;
+      const successParams = new URLSearchParams({ payment_status: 'success' });
+      const cancelParams = new URLSearchParams({ payment_status: 'cancelled' });
+      if (svc) {
+        successParams.set('service', svc);
+        cancelParams.set('service', svc);
+      }
+      if (svc === 'coaching' && plan) {
+        successParams.set('plan', plan);
+        cancelParams.set('plan', plan);
+      }
+      const successReturnPath = `/schedule?${successParams.toString()}`;
+      const cancelReturnPath = `/schedule?${cancelParams.toString()}`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -202,22 +215,29 @@ export default function SchedulingFormPage() {
 
   // Flow definitions
   const flowConfig = {
-    consultation: { totalSteps: 6 },
-    coaching: { totalSteps: 6 },
-    pitchdeck: { totalSteps: 5 },
+    consultation: { totalSteps: 6 }, // 1 select -> 2 schedule -> 3 contact -> 4 payment -> 5 confirmation -> 6 chatbot
+    coaching: { totalSteps: 6 },     // 1 select -> 2 plan -> 3 contact -> 4 payment -> 5 confirmation -> 6 chatbot
+    pitchdeck: { totalSteps: 5 },    // 1 select -> 2 deck -> 3 contact -> 4 confirmation -> 5 chatbot
   };
 
   // Read payment status from URL and clean it
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
-    if (query.get('payment_status') === 'success') {
+    const p = query.get('payment_status');
+    if (p === 'success') {
       setPaymentStatus('success');
-      window.history.replaceState(null, '', '');
-    } else if (query.get('payment_status') === 'cancelled') {
+      // Jump to final Chatbot step for all flows after successful payment
+      setCurrentStep(() => {
+        const st = formData.serviceType;
+        if (!st) return 1;
+        return flowConfig[st].totalSteps;
+      });
+      window.history.replaceState(null, '', '/schedule');
+    } else if (p === 'cancelled') {
       setPaymentStatus('cancelled');
-      window.history.replaceState(null, '', '');
+      window.history.replaceState(null, '', '/schedule');
     }
-  }, []);
+  }, [formData.serviceType]);
 
   // Prefill contact info at step 3 for logged-in users
   useEffect(() => {
@@ -267,6 +287,7 @@ export default function SchedulingFormPage() {
       if (currentStep === 3) return t('scheduling.contactInfo.title', { defaultValue: 'Your contact info' });
       if (currentStep === 4) return t('scheduling.paymentStep.summaryTitle', { defaultValue: 'Payment' });
       if (currentStep === 5) return t('scheduling.confirmation.title', { defaultValue: 'Confirmation' });
+      if (currentStep === 6) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
     }
 
     if (st === 'coaching') {
@@ -274,12 +295,14 @@ export default function SchedulingFormPage() {
       if (currentStep === 3) return t('scheduling.contactInfo.title', { defaultValue: 'Your contact info' });
       if (currentStep === 4) return t('scheduling.paymentStep.summaryTitle', { defaultValue: 'Payment' });
       if (currentStep === 5) return t('scheduling.confirmation.title', { defaultValue: 'Confirmation' });
+      if (currentStep === 6) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
     }
 
     if (st === 'pitchdeck') {
       if (currentStep === 2) return t('scheduling.pitchDeck.title', { defaultValue: 'Pitch deck options' });
       if (currentStep === 3) return t('scheduling.contactInfo.title', { defaultValue: 'Your contact info' });
       if (currentStep === 4) return t('scheduling.confirmation.title', { defaultValue: 'Confirmation' });
+      if (currentStep === 5) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
     }
 
     return t('scheduling.title', { defaultValue: 'Scheduling' });
@@ -363,14 +386,7 @@ export default function SchedulingFormPage() {
       {/* Content area */}
       <main className="flex-1 w-full flex items-start">
         <div className="w-full max-w-2xl mx-auto px-4 py-4">
-          {/* Payment success branch shows confirmation only */}
-          {paymentStatus === 'success' ? (
-            <div className="w-full rounded-2xl shadow-xl bg-black/10 p-4 md:p-6 space-y-4">
-              <FormTitle title={t('scheduling.confirmation.title', { defaultValue: 'Payment Successful!' })} />
-              <ConfirmationStep />
-            </div>
-          ) : (
-            <div className="w-full rounded-2xl  p-4 md:p-6 flex-shrink-0">
+          <div className="w-full rounded-2xl  p-4 md:p-6 flex-shrink-0">
               {/* Step title */}
               <FormTitle title={stepTitle} />
 
@@ -429,8 +445,22 @@ export default function SchedulingFormPage() {
                 <div className="text-white/80">{t('scheduling.confirmation.title', { defaultValue: 'Confirmation' })}</div>
               )}
 
+              {/* Final Chatbot step across all flows */}
+              {((formData.serviceType === 'pitchdeck' && currentStep === 5) ||
+                ((formData.serviceType === 'consultation' || formData.serviceType === 'coaching') && currentStep === 6)) && (
+                <ChatbotStep 
+                  mode="intake"
+                  paymentStatus={paymentStatus}
+                  serviceType={formData.serviceType}
+                  consultation={formData.consultation}
+                  coaching={formData.coaching}
+                  pitchdeck={formData.pitchdeck}
+                  contactInfo={formData.contactInfo}
+                />
+              )}
+
             </div>
-          )}
+          
         </div>
       </main>
 
@@ -460,7 +490,7 @@ export default function SchedulingFormPage() {
             </div>
 
             {/* Next or Finish */}
-            {paymentStatus !== 'success' && currentStep < totalSteps ? (
+            {currentStep < totalSteps ? (
               <div className="flex flex-col items-end">
                 <motion.button
                   onClick={handleNext}
