@@ -198,6 +198,10 @@ class CoachingService {
         }
       };
 
+      // Build return targets so Stripe comes back to the chatbot page
+      const successReturnPath = `/chatbot?payment=success&type=subscription&plan=${subscriptionData.plan}`;
+      const cancelReturnPath = `/chatbot?payment=cancelled&type=subscription`;
+
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
@@ -208,6 +212,8 @@ class CoachingService {
           formData,
           userId: subscriptionData.userId,
           userEmail: subscriptionData.email,
+          returnTo: successReturnPath,
+          cancelReturnTo: cancelReturnPath,
         }),
       });
 

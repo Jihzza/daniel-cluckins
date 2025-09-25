@@ -220,6 +220,10 @@ class ConsultationService {
         }
       };
 
+      // Build return targets so Stripe comes back to the chatbot page
+      const successReturnPath = `/chatbot?payment=success&type=appointment&date=${appointmentData.date}&time=${appointmentData.startTime}&duration=${appointmentData.durationMinutes}`;
+      const cancelReturnPath = `/chatbot?payment=cancelled&type=appointment`;
+
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
@@ -230,6 +234,8 @@ class ConsultationService {
           formData,
           userId: appointmentData.userId,
           userEmail: appointmentData.contactEmail,
+          returnTo: successReturnPath,
+          cancelReturnTo: cancelReturnPath,
         }),
       });
 

@@ -149,6 +149,10 @@ export default function SchedulingFormPage() {
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error('User is not authenticated.');
 
+      // Build dynamic return targets back to the scheduling flow
+      const successReturnPath = `/schedule?payment_status=success`;
+      const cancelReturnPath = `/schedule?payment_status=cancelled`;
+
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
@@ -159,6 +163,8 @@ export default function SchedulingFormPage() {
           formData,
           userId: user.id,
           userEmail: user.email,
+          returnTo: successReturnPath,
+          cancelReturnTo: cancelReturnPath,
         }),
       });
 
