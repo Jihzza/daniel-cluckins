@@ -50,11 +50,11 @@ exports.handler = async (event) => {
       return path;
     };
 
-    const defaultAppointmentSuccess = '/chat?payment=success&type=appointment';
-    const defaultAppointmentCancel = '/chat?payment=cancelled&type=appointment';
+    const defaultAppointmentSuccess = '/chatbot?payment=success&type=appointment';
+    const defaultAppointmentCancel = '/chatbot?payment=cancelled&type=appointment';
 
-    const defaultSubscriptionSuccess = (plan) => `/chat?payment=success&type=subscription&plan=${plan || 'basic'}`;
-    const defaultSubscriptionCancel = '/chat?payment=cancelled&type=subscription';
+    const defaultSubscriptionSuccess = (plan) => `/chatbot?payment=success&type=subscription&plan=${plan || 'basic'}`;
+    const defaultSubscriptionCancel = '/chatbot?payment=cancelled&type=subscription';
 
     let session;
 
@@ -83,7 +83,8 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        sessionId: session.id
+        sessionId: session.id,
+        url: session.url
       }),
     };
   } catch (error) {

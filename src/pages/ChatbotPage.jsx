@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { openaiService } from '../services/openaiService';
-import { supabase } from '../lib/supabaseClient';
 
 const SESSION_STORAGE_KEY = 'chatbot-session-id';
 
@@ -11,37 +10,20 @@ export default function ChatbotPage() {
   const { user, isAuthenticated } = useAuth();
 
   const [sessionId, setSessionId] = useState(() => {
-    // Prefer sid from URL, then localStorage, then sessionStorage, else generate new
-    try {
-      const url = new URL(window.location.href);
-      const sidFromUrl = url.searchParams.get('sid');
-      let existing = sidFromUrl || localStorage.getItem(SESSION_STORAGE_KEY) || sessionStorage.getItem(SESSION_STORAGE_KEY);
-      if (!existing) {
-        existing = typeof crypto?.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      }
-      // Keep both storages in sync for compatibility
-      localStorage.setItem(SESSION_STORAGE_KEY, existing);
-      sessionStorage.setItem(SESSION_STORAGE_KEY, existing);
-      return existing;
-    } catch (_e) {
-      const fallback = typeof crypto?.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      sessionStorage.setItem(SESSION_STORAGE_KEY, fallback);
-      try { localStorage.setItem(SESSION_STORAGE_KEY, fallback); } catch {}
-      return fallback;
-    }
+    const cached = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (cached) return cached;
+    const id = typeof crypto?.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem(SESSION_STORAGE_KEY, id);
+    return id;
   });
 
   const [messages, setMessages] = useState(() => []);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
-  const isGenerating = useRef(false); // Moved to top level
 
   const canSend = useMemo(() => {
     if (!isAuthenticated) return false;
@@ -54,140 +36,26 @@ export default function ChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Keep a ref to the latest messages to guard async welcome
-  const messagesRef = useRef(messages);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-
-  // Keep storages in sync when sessionId changes
+  // Show welcome message when component mounts and user is authenticated
   useEffect(() => {
-    if (!sessionId) return;
-    console.log('Chatbot session_id:', sessionId);
-    try { localStorage.setItem(SESSION_STORAGE_KEY, sessionId); } catch {}
-    sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-  }, [sessionId]);
-
-  // Load existing messages when auth/session is ready
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!sessionId) {
-        console.log('[Chatbot] loadMessages: no sessionId yet, skipping');
-        return;
-      }
-      if (!isAuthenticated) {
-        console.log('[Chatbot] loadMessages: not authenticated yet, skipping');
-        return; // wait until auth is ready to avoid RLS errors
-      }
-
-      setIsLoadingMessages(true);
-      try {
-        const { data: authUserData } = await supabase.auth.getUser();
-        console.log('[Chatbot] loadMessages: querying', {
-          sessionId,
-          isAuthenticated,
-          authUserId: authUserData?.user?.id || null
-        });
-      } catch (e) {
-        console.log('[Chatbot] loadMessages: getUser failed', e);
-      }
-
-      const { data, error } = await supabase
-        .from('chatbot_conversations')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('[Chatbot] Error loading messages:', error);
-        setIsLoadingMessages(false);
-        return;
-      }
-
-      console.log('[Chatbot] loadMessages: rows', data?.length || 0);
-      if (data?.length > 0) {
-        setMessages(data.map(msg => ({ role: msg.role, content: msg.content })));
-        console.log('[Chatbot] loadMessages: setMessages with DB rows, setting hasShownWelcome=true');
-        setHasShownWelcome(true);
-      } else {
-        console.log('[Chatbot] loadMessages: no rows for this session');
-      }
-      setIsLoadingMessages(false);
-    };
-
-    loadMessages();
-  }, [sessionId, isAuthenticated]);
-
-  // Show welcome message only if no messages loaded
-  useEffect(() => {
-    if (isAuthenticated && messages.length === 0 && !hasShownWelcome && !isGenerating.current && !isLoadingMessages) {
-      console.log('[Chatbot] welcome guard passed', {
-        isAuthenticated,
-        messagesLen: messages.length,
-        hasShownWelcome,
-        isGenerating: isGenerating.current,
-        isLoadingMessages
-      });
-      isGenerating.current = true;
-
+    if (isAuthenticated && messages.length === 0 && !hasShownWelcome) {
       const showWelcome = async () => {
         try {
-          const sid = sessionIdRef.current || sessionId;
-          console.log('[Chatbot] showWelcome: start', { sid });
-          
-          // If messages arrived while we waited, abort
-          if (messagesRef.current.length > 0) {
-            console.log('[Chatbot] showWelcome: aborting, messages already loaded');
-            return;
-          }
-
-          // Check for existing welcome in DB
-          const { data: existingWelcome, error: checkError } = await supabase
-            .from('chatbot_conversations')
-            .select('content')
-            .eq('session_id', sid)
-            .eq('is_welcome', true)
-            .eq('role', 'assistant')
-            .limit(1)
-            .maybeSingle();
-
-          if (checkError) throw checkError;
-
-          let welcomeMessage;
-          if (existingWelcome) {
-            console.log('[Chatbot] showWelcome: found existing welcome');
-            welcomeMessage = existingWelcome.content;
-          } else if (openaiService.isConfigured()) {
+          if (openaiService.isConfigured()) {
+            // Create user profile for personalized welcome
             const userProfile = user ? {
               full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
               email: user.email || null,
               phone: user.user_metadata?.phone || null
             } : null;
             
-            welcomeMessage = await openaiService.getWelcomeMessage(user?.id, userProfile);
-            
-            // Store welcome message using the same upsert logic
-            const stored = await storeMessage(sid, 'assistant', welcomeMessage, true);
-            if (!stored) {
-              console.log('Welcome message storage failed, checking for existing...');
-              // If store fails (e.g., duplicate), re-query to get the existing one
-              const { data: fallbackExisting } = await supabase
-                .from('chatbot_conversations')
-                .select('content')
-                .eq('session_id', sid)
-                .eq('is_welcome', true)
-                .limit(1)
-                .single();
-              welcomeMessage = fallbackExisting?.content || "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?";
-            }
-          } else {
-            welcomeMessage = "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?";
-          }
-
-          // Double-check again before setting welcome to avoid race
-          if (messagesRef.current.length === 0) {
-            console.log('[Chatbot] showWelcome: setting messages to single welcome');
+            const welcomeMessage = await openaiService.getWelcomeMessage(user?.id, userProfile);
             setMessages([{ role: 'assistant', content: welcomeMessage }]);
           } else {
-            console.log('[Chatbot] showWelcome: skipped setting welcome, messages present');
+            setMessages([{ 
+              role: 'assistant', 
+              content: "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?" 
+            }]);
           }
         } catch (error) {
           console.error('Error showing welcome message:', error);
@@ -195,32 +63,20 @@ export default function ChatbotPage() {
             role: 'assistant', 
             content: "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?" 
           }]);
-        } finally {
-          console.log('[Chatbot] showWelcome: finished, setHasShownWelcome(true)');
-          setHasShownWelcome(true);
-          isGenerating.current = false;
         }
+        setHasShownWelcome(true);
       };
       
+      // Small delay to make the welcome feel more natural
       setTimeout(showWelcome, 500);
     }
   }, [isAuthenticated, messages.length, hasShownWelcome, user?.id]);
-
-  // Maintain a ref for sessionId inside async blocks
-  const sessionIdRef = useRef(sessionId);
-  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   // Handle payment success/cancellation from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const payment = urlParams.get('payment');
     const type = urlParams.get('type');
-    const sid = urlParams.get('sid');
-    if (sid) {
-      console.log('[Chatbot] URL sid found, setting sessionId', sid);
-      setSessionId(sid);
-    }
-    console.log('[Chatbot] payment URL params', { payment, type, sid });
     
     if (payment === 'success') {
       if (type === 'appointment') {
@@ -247,170 +103,77 @@ export default function ChatbotPage() {
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []); // Removed the pending_welcome_message effect
+  }, []);
 
-  // Helper to create idempotency key for messages
-  const createMessageKey = (sessionId, role, content, isWelcome = false) => {
-    const data = `${sessionId}:${role}:${content}:${isWelcome}`;
-    // Simple hash function (you could use crypto.subtle.digest for better hashing)
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString(36);
-  };
-
-  // Helper to check for recent duplicates (temporary until migration)
-  const existsRecentDuplicate = async (sessionId, role, content, isWelcome = false) => {
+  // Consume pending welcome message once the user visits the chat page
+  useEffect(() => {
     try {
-      const { data, error } = await supabase
-        .from('chatbot_conversations')
-        .select('id, created_at')
-        .eq('session_id', sessionId)
-        .eq('role', role)
-        .eq('content', content)
-        .eq('is_welcome', isWelcome)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (error) return false;
-      if (!data) return false;
-      
-      const createdAt = new Date(data.created_at).getTime();
-      const now = Date.now();
-      return now - createdAt < 5000; // consider duplicate if within 5 seconds
-    } catch (_e) {
-      return false;
-    }
-  };
-
-  // Helper to store message with fallback approach
-  const storeMessage = async (sessionId, role, content, isWelcome = false) => {
-    const messageKey = createMessageKey(sessionId, role, content, isWelcome);
-    
-    try {
-      // First, try the new upsert approach (works after migration)
-      const { error: upsertError } = await supabase
-        .from('chatbot_conversations')
-        .upsert({
-          message_key: messageKey,
-          session_id: sessionId,
-          user_id: user?.id || null,
-          role,
-          content,
-          created_at: new Date().toISOString(),
-          is_welcome: isWelcome
-        }, {
-          onConflict: 'message_key',
-          ignoreDuplicates: true
-        });
-
-      // If upsert works (migration completed), we're done
-      if (!upsertError) {
-        console.log(`✅ ${role} message stored with upsert (migration completed)`);
-        return true;
+      const msg = sessionStorage.getItem('pending_welcome_message');
+      if (msg) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+        sessionStorage.removeItem('pending_welcome_message');
+        window.dispatchEvent(new CustomEvent('welcomeMessageConsumed'));
       }
-
-      // If upsert fails (likely due to missing message_key column), fall back to old method
-      console.log(`⚠️ Upsert failed, falling back to insert + duplicate check:`, upsertError.message);
-      
-      // Check for recent duplicates to avoid doubles
-      const isDuplicate = await existsRecentDuplicate(sessionId, role, content, isWelcome);
-      if (isDuplicate) {
-        console.log(`🔄 Skipping duplicate ${role} message`);
-        return true; // Consider it successful since message already exists
-      }
-
-      // Try regular insert as fallback
-      const { error: insertError } = await supabase
-        .from('chatbot_conversations')
-        .insert({
-          session_id: sessionId,
-          user_id: user?.id || null,
-          role,
-          content,
-          created_at: new Date().toISOString(),
-          is_welcome: isWelcome
-        });
-
-      if (insertError) {
-        console.error(`❌ Error storing ${role} message with fallback insert:`, insertError);
-        return false;
-      }
-
-      console.log(`✅ ${role} message stored with fallback insert`);
-      return true;
-
-    } catch (err) {
-      console.error(`💥 Exception storing ${role} message:`, err);
-      return false;
-    }
-  };
+    } catch {}
+  }, []);
 
   const handleSend = async () => {
     if (!canSend) return;
 
     const content = inputValue.trim();
-    if (!content) return;
-
     setInputValue('');
-    const sid = sessionIdRef.current || sessionId;
-
-    // 1) Optimistically update UI with user message
     setMessages((prev) => [...prev, { role: 'user', content }]);
-
-    // 2) Store user message in DB (outside of state updater)
-    const userStorePromise = storeMessage(sid, 'user', content, false);
-
     setIsSending(true);
 
     try {
+      // All requests handled conversationally through OpenAI - no more forms!
+      // The AI will handle bookings, subscriptions, and pitch deck requests through conversation
+
       if (!openaiService.isConfigured()) {
-        const errorMessage = "I'm currently not configured to handle questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY).";
-        
-        // Update UI immediately
-        setMessages((prev) => [...prev, { role: 'assistant', content: errorMessage }]);
-        
-        // Store error message in DB
-        await storeMessage(sid, 'assistant', errorMessage, false);
+            setMessages((prev) => [...prev, { 
+              role: 'assistant', 
+          content: "I'm currently not configured to handle questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY)." 
+        }]);
         return;
       }
 
-      // Wait for user message to be stored before proceeding
-      await userStorePromise;
-
-      // Create the complete conversation including the current user message
-      const currentConversation = [...messages, { role: 'user', content }];
-      
-      const userProfile = user ? {
-        full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-        email: user.email || null,
-        phone: user.user_metadata?.phone || null
-      } : null;
-      
-      const response = await openaiService.getChatResponse(currentConversation, user?.id, userProfile);
-      
-      if (response.success) {
-        // 1) Update UI with assistant message
-        setMessages((prev) => [...prev, { role: 'assistant', content: response.content }]);
+      try {
+        // Create the complete conversation including the current user message
+        // (since setMessages is async, the current message isn't in the messages state yet)
+        const currentConversation = [...messages, { role: 'user', content }];
         
-        // 2) Store assistant message in DB (outside of state updater)
-        await storeMessage(sid, 'assistant', response.content, false);
-      } else {
-        throw new Error('Failed to get AI response');
+        // Create user profile object from auth context
+        const userProfile = user ? {
+          full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+          email: user.email || null,
+          phone: user.user_metadata?.phone || null
+        } : null;
+        
+        const response = await openaiService.getChatResponse(currentConversation, user?.id, userProfile);
+        
+        if (response.success) {
+          setMessages((prev) => [...prev, { role: 'assistant', content: response.content }]);
+        } else {
+          throw new Error('Failed to get AI response');
+        }
+      } catch (aiError) {
+        console.error('OpenAI service error:', aiError);
+        let errorMessage = "I'm having trouble processing your request right now. Please try again in a moment.";
+        
+        // Provide specific error messages for common issues
+        if (aiError.message.includes('quota')) {
+          errorMessage = "I've reached my usage limit for today. Please try again later or contact support.";
+        } else if (aiError.message.includes('api_key')) {
+          errorMessage = "There's a configuration issue with my AI service. Please contact support.";
+        }
+        
+        setMessages((prev) => [...prev, { role: 'assistant', content: errorMessage }]);
       }
-    } catch (aiError) {
-      console.error('AI response error:', aiError);
-      const errorMessage = "Sorry, I'm having trouble responding right now. Please try again later.";
-      
-      // Update UI
-      setMessages((prev) => [...prev, { role: 'assistant', content: errorMessage }]);
-      
-      // Store error message in DB
-      await storeMessage(sid, 'assistant', errorMessage, false);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: 'Network error. Please try again.' },
+      ]);
     } finally {
       setIsSending(false);
     }

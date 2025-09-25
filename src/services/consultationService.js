@@ -62,29 +62,23 @@ class ConsultationService {
       const price = paymentService.calculateAppointmentPrice(appointmentData.durationMinutes);
       
       // Create Stripe checkout session (appointment will be created after payment)
-      const sessionId = await paymentService.createAppointmentCheckout({
+      const { sessionId, url } = await paymentService.createAppointmentCheckout({
         ...appointmentData,
-        appointmentId: 'pending', // Will be created after payment
-        // Append sid directly as a fallback if called bypassing paymentService default handling
-        returnTo: (() => {
-          const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
-          const base = '/chat?payment=success&type=appointment';
-          return sid ? `${base}&sid=${encodeURIComponent(sid)}` : base;
-        })(),
-        cancelReturnTo: (() => {
-          const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
-          const base = '/chat?payment=cancelled&type=appointment';
-          return sid ? `${base}&sid=${encodeURIComponent(sid)}` : base;
-        })()
+        appointmentId: 'pending' // Will be created after payment
       });
       
-      // Redirect to Stripe checkout
-      await paymentService.redirectToCheckout(sessionId);
+      // Prefer sending a clickable link in chat; UI can still navigate
+      const linkText = `🛒 Click here to complete payment and confirm your booking`;
+      const link = url || '';
+      const message = url
+        ? `💰 **Price: ${paymentService.formatPrice(price)}**\n\n💳 **Payment Required:**\n[${linkText}](${link})\n\n*This will redirect you to Stripe's secure checkout page.*`
+        : `Redirecting to payment (${paymentService.formatPrice(price)})...`;
       
       return {
         success: true,
-        message: `Redirecting to payment (${paymentService.formatPrice(price)})...`,
-        sessionId: sessionId
+        message,
+        sessionId: sessionId,
+        checkoutUrl: url || null
       };
     } catch (error) {
       console.error('Consultation Service: Error scheduling appointment with payment:', error);
@@ -191,8 +185,8 @@ class ConsultationService {
           quantity: 1,
         }],
         mode: 'payment',
-        success_url: `${baseUrl}/chat?payment=success&type=appointment&date=${appointmentData.date}&time=${appointmentData.startTime}&duration=${appointmentData.durationMinutes}`,
-        cancel_url: `${baseUrl}/chat?payment=cancelled&type=appointment`,
+        success_url: `${baseUrl}/chatbot?payment=success&type=appointment&date=${appointmentData.date}&time=${appointmentData.startTime}&duration=${appointmentData.durationMinutes}`,
+        cancel_url: `${baseUrl}/chatbot?payment=cancelled&type=appointment`,
         metadata: {
           userId: appointmentData.userId,
           appointmentData: JSON.stringify(appointmentData),
@@ -236,8 +230,6 @@ class ConsultationService {
           formData,
           userId: appointmentData.userId,
           userEmail: appointmentData.contactEmail,
-          returnTo: '/chat?payment=success&type=appointment',
-          cancelReturnTo: '/chat?payment=cancelled&type=appointment',
         }),
       });
 

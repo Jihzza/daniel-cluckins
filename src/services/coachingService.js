@@ -62,19 +62,20 @@ class CoachingService {
       const price = paymentService.getSubscriptionPrice(subscriptionData.plan);
       
       // Create Stripe checkout session (subscription will be created after payment)
-      const sessionId = await paymentService.createSubscriptionCheckout({
-        ...subscriptionData,
-        returnTo: `/chat?payment=success&type=subscription&plan=${subscriptionData.plan}`,
-        cancelReturnTo: '/chat?payment=cancelled&type=subscription'
-      });
+      const { sessionId, url } = await paymentService.createSubscriptionCheckout(subscriptionData);
       
-      // Redirect to Stripe checkout
-      await paymentService.redirectToCheckout(sessionId);
+      // Prefer sending a clickable link in chat; UI can still navigate
+      const linkText = `🛒 Click here to complete payment and activate your subscription`;
+      const link = url || '';
+      const message = url
+        ? `💰 **Price: ${paymentService.formatPrice(price)}/month**\n\n💳 **Payment Required:**\n[${linkText}](${link})\n\n*This will redirect you to Stripe's secure checkout page.*`
+        : `Redirecting to payment for ${subscriptionData.plan} plan (${paymentService.formatPrice(price)}/month)...`;
       
       return {
         success: true,
-        message: `Redirecting to payment for ${subscriptionData.plan} plan (${paymentService.formatPrice(price)}/month)...`,
-        sessionId: sessionId
+        message,
+        sessionId: sessionId,
+        checkoutUrl: url || null
       };
     } catch (error) {
       console.error('Coaching Service: Error creating subscription with payment:', error);
@@ -207,8 +208,6 @@ class CoachingService {
           formData,
           userId: subscriptionData.userId,
           userEmail: subscriptionData.email,
-          returnTo: `/chat?payment=success&type=subscription&plan=${subscriptionData.plan}`,
-          cancelReturnTo: '/chat?payment=cancelled&type=subscription',
         }),
       });
 

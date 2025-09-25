@@ -35,18 +35,7 @@ class PaymentService {
         },
         body: JSON.stringify({
           type: 'appointment',
-          ...appointmentData,
-          // Append chat sid so chat can restore the same conversation
-          returnTo: (() => {
-            const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
-            const base = appointmentData.returnTo || '/chat?payment=success&type=appointment';
-            return sid ? `${base}${base.includes('?') ? '&' : '?'}sid=${encodeURIComponent(sid)}` : base;
-          })(),
-          cancelReturnTo: (() => {
-            const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
-            const base = appointmentData.cancelReturnTo || '/chat?payment=cancelled&type=appointment';
-            return sid ? `${base}${base.includes('?') ? '&' : '?'}sid=${encodeURIComponent(sid)}` : base;
-          })()
+          ...appointmentData
         }),
       });
 
@@ -54,8 +43,8 @@ class PaymentService {
         throw new Error('Failed to create checkout session');
       }
 
-      const { sessionId } = await response.json();
-      return sessionId;
+      const { sessionId, url } = await response.json();
+      return { sessionId, url };
     } catch (error) {
       console.error('Payment service error:', error);
       throw error;
@@ -74,17 +63,7 @@ class PaymentService {
         },
         body: JSON.stringify({
           type: 'subscription',
-          ...subscriptionData,
-          returnTo: (() => {
-            const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
-            const base = subscriptionData.returnTo || `/chat?payment=success&type=subscription&plan=${subscriptionData.plan}`;
-            return sid ? `${base}${base.includes('?') ? '&' : '?'}sid=${encodeURIComponent(sid)}` : base;
-          })(),
-          cancelReturnTo: (() => {
-            const sid = (typeof window !== 'undefined') ? (localStorage.getItem('chatbot-session-id') || sessionStorage.getItem('chatbot-session-id')) : null;
-            const base = subscriptionData.cancelReturnTo || '/chat?payment=cancelled&type=subscription';
-            return sid ? `${base}${base.includes('?') ? '&' : '?'}sid=${encodeURIComponent(sid)}` : base;
-          })()
+          ...subscriptionData
         }),
       });
 
@@ -92,8 +71,8 @@ class PaymentService {
         throw new Error('Failed to create checkout session');
       }
 
-      const { sessionId } = await response.json();
-      return sessionId;
+      const { sessionId, url } = await response.json();
+      return { sessionId, url };
     } catch (error) {
       console.error('Payment service error:', error);
       throw error;
