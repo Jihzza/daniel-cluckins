@@ -48,6 +48,9 @@ export default function ChatbotPage() {
     setMessages([]);
     setHasShownWelcome(false);
 
+    // create the (session_id,user_id) row for the new chat
+    ensureSessionRow(newId);
+
     // OPTIONAL: strip payment params from the URL to avoid carrying banners into the fresh chat
     try {
       const url = new URL(window.location.href);
@@ -66,12 +69,31 @@ export default function ChatbotPage() {
       const sid = sessionStorage.getItem(SESSION_STORAGE_KEY);
       const userId = user?.id || null;
       const { error } = await supabase
-        .from('chatbot_conversations')
+        .from('chat_messages')
         .insert([{ session_id: sid, user_id: userId, role, content }])
         .select(); // important: return rows / surface RLS errors
       if (error) console.error('Failed to save chat row:', error);
     } catch (e) {
       console.error('saveChatRow error:', e);
+    }
+  }
+
+  async function ensureSessionRow(explicitSessionId) {
+    try {
+      let userId = user?.id ?? null;
+      if (!userId) {
+        const { data } = await supabase.auth.getUser();
+        userId = data?.user?.id ?? null;
+      }
+      const sid = explicitSessionId ?? sessionStorage.getItem(SESSION_STORAGE_KEY) ?? sessionId;
+      if (!userId || !sid) return;
+
+      await supabase
+        .from('chat_sessions')
+        .upsert([{ session_id: sid, user_id: userId }], { onConflict: 'session_id,user_id' })
+        .select();
+    } catch (e) {
+      console.error('ensureSessionRow error:', e);
     }
   }
 
@@ -83,7 +105,7 @@ export default function ChatbotPage() {
         if (!sid) return;
 
         const { data, error } = await supabase
-          .from('chatbot_conversations')
+          .from('chat_messages')
           .select('role, content')
           .eq('session_id', sid)
           .eq('user_id', user?.id)
@@ -106,6 +128,11 @@ export default function ChatbotPage() {
 
     loadHistory();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !sessionId) return;
+    ensureSessionRow(sessionId);
+  }, [user?.id, sessionId]);
 
   // Show welcome message when component mounts and user is authenticated
   useEffect(() => {
@@ -143,35 +170,34 @@ export default function ChatbotPage() {
 
   // Handle payment success/cancellation from URL parameters
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const payment = urlParams.get('payment');
-    const type = urlParams.get('type');
+    (async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const payment = urlParams.get('payment');
+      const type = urlParams.get('type');
 
-    if (payment === 'success') {
-      if (type === 'appointment') {
-        setMessages((prev) => [...prev, {
-          role: 'assistant',
-          content: '🎉 Payment successful! Your appointment has been confirmed. You will receive a confirmation email shortly.'
-        }]);
-      } else if (type === 'subscription') {
-        const plan = urlParams.get('plan');
-        setMessages((prev) => [...prev, {
-          role: 'assistant',
-          content: `🎉 Payment successful! Your ${plan} coaching subscription is now active. Welcome to the program!`
-        }]);
+      if (payment === 'success') {
+        if (type === 'appointment') {
+          const msg = '🎉 Payment successful! Your appointment has been confirmed. You will receive a confirmation email shortly.';
+          setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+          await saveChatRow('assistant', msg);
+        } else if (type === 'subscription') {
+          const plan = urlParams.get('plan');
+          const msg = `🎉 Payment successful! Your ${plan} coaching subscription is now active. Welcome to the program!`;
+          setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+          await saveChatRow('assistant', msg);
+        }
+
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (payment === 'cancelled') {
+        const msg = 'Payment was cancelled. No charges were made. Feel free to try again anytime!';
+        setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+        await saveChatRow('assistant', msg);
+
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
-
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (payment === 'cancelled') {
-      setMessages((prev) => [...prev, {
-        role: 'assistant',
-        content: 'Payment was cancelled. No charges were made. Feel free to try again anytime!'
-      }]);
-
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
+    })();
   }, []);
 
   // Consume pending welcome message once the user visits the chat page
