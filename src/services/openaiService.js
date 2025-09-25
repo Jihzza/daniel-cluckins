@@ -148,6 +148,62 @@ SERVICE-SPECIFIC STARTERS:
   }
 
   /**
+  * Generate the *very first* intake message after payment.
+  * Must (a) confirm the purchase succinctly and (b) end with ONE open-ended question.
+ */
+  async generateIntakeKickoff({
+    paymentStatus = 'success',
+    serviceType = 'consultation',
+    intakeContext = {},
+    userId = null,
+    userProfile = null,
+  } = {}) {
+    if (!this.client) {
+      throw new Error('OpenAI client not initialized. Please check your API key configuration.');
+    }
+
+    const sys = [
+      this.intakeSystemPrompt,
+      // Guardrails for the opener (concise, warm, ends with a question)
+      `\n\nWRITE THE FIRST MESSAGE WITH THESE RULES:
+         - If paymentStatus is "success", acknowledge it positively.
+         - Tailor wording to serviceType.
+         - Be warm and efficient (2 short sentences max).
+         - END WITH ONE open-ended question that nudges the user to answer (no yes/no).
+         - No lists, no follow-ups, no next steps—just one question.`,
+    ].join('');
+
+    const contextNote = `
+  PAYMENT STATUS: ${paymentStatus}
+  SERVICE TYPE: ${serviceType}
+  INTAKE CONTEXT (do not re-ask if present): ${JSON.stringify(intakeContext)}
+  ${userId ? `USER ID: ${userId}` : ''}
+  ${userProfile ? `PROFILE: ${JSON.stringify(userProfile)}` : ''}`.trim();
+
+    const completion = await this.client.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      temperature: 0.6,
+      messages: [
+        { role: 'system', content: sys },
+        {
+          role: 'user',
+          content:
+            `Compose the kickoff message now.\n` +
+            `Requirements reminder: acknowledge payment if success; end with a single open-ended question.\n` +
+            contextNote,
+        },
+      ],
+      max_tokens: 160,
+      presence_penalty: 0.2,
+      frequency_penalty: 0.1,
+    });
+
+    const content = completion.choices?.[0]?.message?.content?.trim();
+    if (!content) throw new Error('No kickoff message returned from OpenAI.');
+    return content;
+  }
+
+  /**
    * Get AI response for a conversation
    */
   async getChatResponse(messages, userId = null, userProfile = null) {

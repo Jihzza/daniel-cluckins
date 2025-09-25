@@ -77,28 +77,45 @@ export default function ChatbotStep({
 
   useEffect(() => {
     if (!isAuthenticated || hasShownWelcome || messages.length > 0) return;
-    const buildConfirmation = () => {
-      if (paymentStatus === 'success') {
-        if (serviceType === 'consultation') {
-          const { date, time, duration } = consultation || {};
-          return `🎉 Payment successful! Your appointment has been confirmed. You will receive a confirmation email shortly.`;
-        }
-        if (serviceType === 'coaching') {
-          const plan = coaching?.plan || 'your selected';
-          return `🎉 Payment successful! Your ${plan} coaching subscription is now active. Welcome to the program!`;
-        }
-        if (serviceType === 'pitchdeck') {
-          const project = pitchdeck?.project || 'your selected';
-          return `🎉 Request **Confirmed!** We've got your request for the ${project} pitch deck. We'll follow up by email if provided.`;
-        }
+    (async () => {
+      try {
+        const userProfile = user ? {
+          full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+          email: user.email || null,
+          phone: user.user_metadata?.phone || null
+        } : null;
+
+        const intakeContext = { serviceType, consultation, coaching, contactInfo };
+        const first = await openaiService.generateIntakeKickoff({
+          paymentStatus,
+          serviceType,
+          intakeContext,
+          userId: user?.id || null,
+          userProfile
+        });
+
+        setMessages([{ role: 'assistant', content: first, createdAt: new Date().toISOString() }]);
+        await saveChatRow('assistant', first);
+        setHasShownWelcome(true);
+      } catch (e) {
+        console.error('Kickoff generation failed:', e);
+        const fallback = "🎉 Payment confirmed! To tailor things for you, what’s the main goal you want us to focus on first?";
+        setMessages([{ role: 'assistant', content: fallback, createdAt: new Date().toISOString() }]);
+        await saveChatRow('assistant', fallback);
+        setHasShownWelcome(true);
       }
-      return `Let's caputre a few details so Daniel can hit the ground running in your ${serviceType}!`;
-    };
-    const first = buildConfirmation();
-    setMessages([{ role: 'assistant', content: first, createdAt: new Date().toISOString() }]);
-    saveChatRow('assistant', first);
-    setHasShownWelcome(true);
-  }, [isAuthenticated, hasShownWelcome, messages.length, paymentStatus, serviceType, consultation, coaching]);
+    })();
+  }, [
+    isAuthenticated,
+    hasShownWelcome,
+    messages.length,
+    paymentStatus,
+    serviceType,
+    consultation,
+    coaching,
+    contactInfo,
+    user?.id
+  ]);
 
   useEffect(() => {
     try {
