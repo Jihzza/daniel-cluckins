@@ -1,11 +1,15 @@
+// src/components/chat/ChatPreviewToast.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import BotIcon from "../../assets/icons/DaGalow Branco.svg"; // adjust if your path differs
+import { useTranslation } from "react-i18next";
 
 /**
  * Bottom toast that previews the welcome message and sits just above the nav bar.
  */
 export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx = 0 }) {
+  const { t } = useTranslation();
+
   const cleaned = (text || "").replace(/\s+/g, " ").trim();
   const full = cleaned.length > 120 ? `${cleaned.slice(0, 120)}…` : cleaned;
   const [idx, setIdx] = useState(0);
@@ -13,7 +17,7 @@ export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx =
   useEffect(() => {
     if (!open) return;
     setIdx(0);
-    const speed = 18;
+    const speed = 18; // kept as-is (unused local; preserving original)
     const id = setInterval(() => {
       setIdx((i) => (i < full.length ? i + 1 : i));
     }, 30);
@@ -45,7 +49,7 @@ export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx =
             <img src={BotIcon} alt="" className="w-6 h-6 mt-0.5" />
             <div className="flex-1">
               <div className="text-white text-[11px] uppercase tracking-wide mb-0.5">
-                New from Daniel
+                {t('chatbot.previewToast.newFrom', { defaultValue: 'New from Daniel' })}
               </div>
               <div className="text-white text-sm md:text-base leading-snug">{preview}</div>
             </div>

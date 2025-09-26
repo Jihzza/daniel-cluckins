@@ -5,6 +5,7 @@
 // - Adds optional `highlightedDates` (array of Date or ISO) to show a dot
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from 'react-i18next';
 import {
   addDays,
   addMonths,
@@ -251,7 +252,7 @@ export default function CustomCalendar({
             type="button"
             onClick={goToPrevMonth}
             className="px-2 py-1"
-            aria-label="Previous month"
+            aria-label={t('calendar.prevMonth')}
           >
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -268,7 +269,7 @@ export default function CustomCalendar({
             type="button"
             onClick={goToNextMonth}
             className="px-2 py-1"
-            aria-label="Next month"
+            aria-label={t('calendar.nextMonth')}
           >
             <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>

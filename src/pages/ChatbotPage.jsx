@@ -7,11 +7,13 @@ import { supabase } from '../lib/supabaseClient';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FiClock, FiPlus, FiSend } from 'react-icons/fi';
 import Input from '../components/common/Forms/Input';
+import { useTranslation } from 'react-i18next'; // ⬅️ added
 
 const SESSION_STORAGE_KEY = 'chatbot-session-id';
 
 export default function ChatbotPage() {
   const { user } = useAuth();
+  const { t } = useTranslation(); // ⬅️ added
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [sessionId, setSessionId] = useState(() => {
@@ -28,7 +30,6 @@ export default function ChatbotPage() {
     sessionStorage.setItem(SESSION_STORAGE_KEY, id);
     return id;
   });
-
 
   useEffect(() => {
     const sid = searchParams.get('session_id');
@@ -71,29 +72,22 @@ export default function ChatbotPage() {
 
   // Create a new conversation (new session id + clear state)
   function handleNewConversation() {
-    // Prefer Crypto.randomUUID when available; otherwise a simple fallback
     const newId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-      ? crypto.randomUUID()           // secure v4 UUID (MDN)
+      ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
     sessionStorage.setItem(SESSION_STORAGE_KEY, newId);
     setSessionId(newId);
-
-    // Clear current thread and allow welcome message effect to run again
     setMessages([]);
     setHasShownWelcome(false);
-
     navigate(`/chat?session_id=${encodeURIComponent(newId)}`, { replace: true });
 
-
-    // OPTIONAL: strip payment params from the URL to avoid carrying banners into the fresh chat
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete('payment');
       window.history.replaceState(null, '', url.toString());
-    } catch { }
+    } catch {}
   }
-
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -107,14 +101,14 @@ export default function ChatbotPage() {
       const { error } = await supabase
         .from('chatbot_conversations')
         .insert([{ session_id: sid, user_id: userId, role, content }])
-        .select(); // important: return rows / surface RLS errors
+        .select();
       if (error) console.error('Failed to save chat row:', error);
     } catch (e) {
       console.error('saveChatRow error:', e);
     }
   }
 
-  // Load full conversation history for this session from Supabase (if available)
+  // Load full conversation history
   useEffect(() => {
     const loadHistory = async () => {
       try {
@@ -127,10 +121,8 @@ export default function ChatbotPage() {
           .eq('session_id', sid);
 
         if (user?.id) {
-          // user-specific rows OR system rows with user_id NULL
           q = q.or(`user_id.eq.${user.id},user_id.is.null`);
         } else {
-          // guest: only rows created as anonymous
           q = q.is('user_id', null);
         }
 
@@ -153,13 +145,12 @@ export default function ChatbotPage() {
     loadHistory();
   }, [user?.id, sessionId]);
 
-  // Show welcome message when component mounts and user is authenticated
+  // Welcome message
   useEffect(() => {
     if (!historyLoaded || hasShownWelcome || messages.length > 0) return;
     const showWelcome = async () => {
       try {
         if (openaiService.isConfigured()) {
-          // Create user profile for personalized welcome
           const userProfile = user ? {
             full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
             email: user.email || null,
@@ -170,24 +161,23 @@ export default function ChatbotPage() {
           setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: welcomeMessage, createdAt: new Date().toISOString() }]);
           await saveChatRow('assistant', welcomeMessage);
         } else {
-          const fallback = "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?";
+          const fallback = t('chatbot.page.messages.welcomeFallback');
           setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: fallback, createdAt: new Date().toISOString() }]);
           await saveChatRow('assistant', fallback);
         }
       } catch (error) {
         console.error('Error showing welcome message:', error);
-        const fallback = "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?";
+        const fallback = t('chatbot.page.messages.welcomeFallback');
         setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: fallback, createdAt: new Date().toISOString() }]);
         await saveChatRow('assistant', fallback);
       }
       setHasShownWelcome(true);
     };
 
-    // Small delay to make the welcome feel more natural
     setTimeout(showWelcome, 500);
-  }, [historyLoaded, messages.length, hasShownWelcome, user?.id]);
+  }, [historyLoaded, messages.length, hasShownWelcome, user?.id, t]);
 
-  // Handle payment success/cancellation from URL parameters
+  // Payment banners
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const payment = urlParams.get('payment');
@@ -197,33 +187,29 @@ export default function ChatbotPage() {
       if (type === 'appointment') {
         setMessages((prev) => [...prev, {
           role: 'assistant',
-          content: '🎉 Payment successful! Your appointment has been confirmed. You will receive a confirmation email shortly.',
+          content: t('chatbot.page.messages.paymentSuccessAppointment'),
           createdAt: new Date().toISOString()
         }]);
       } else if (type === 'subscription') {
         const plan = urlParams.get('plan');
         setMessages((prev) => [...prev, {
           role: 'assistant',
-          content: `🎉 Payment successful! Your ${plan} coaching subscription is now active. Welcome to the program!`,
+          content: t('chatbot.page.messages.paymentSuccessSubscription', { plan }),
           createdAt: new Date().toISOString()
         }]);
       }
-
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (payment === 'cancelled') {
       setMessages((prev) => [...prev, {
         role: 'assistant',
-        content: 'Payment was cancelled. No charges were made. Feel free to try again anytime!',
+        content: t('chatbot.page.messages.paymentCancelled'),
         createdAt: new Date().toISOString()
       }]);
-
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []);
+  }, [t]);
 
-  // Consume pending welcome message once the user visits the chat page
+  // Consume pending welcome message
   useEffect(() => {
     try {
       const msg = sessionStorage.getItem('pending_welcome_message');
@@ -246,24 +232,16 @@ export default function ChatbotPage() {
     setIsSending(true);
 
     try {
-      // All requests handled conversationally through OpenAI - no more forms!
-      // The AI will handle bookings, subscriptions, and pitch deck requests through conversation
-
       if (!openaiService.isConfigured()) {
-        setMessages((prev) => [...prev, {
-          role: 'assistant',
-          content: "I'm currently not configured to handle questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY)."
-        }]);
-        await saveChatRow('assistant', "I'm currently not configured to handle questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY).");
+        const msg = t('chatbot.page.messages.notConfigured');
+        setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+        await saveChatRow('assistant', msg);
         return;
       }
 
       try {
-        // Create the complete conversation including the current user message
-        // (since setMessages is async, the current message isn't in the messages state yet)
         const currentConversation = [...messages, { role: 'user', content }];
 
-        // Create user profile object from auth context
         const userProfile = user ? {
           full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
           email: user.email || null,
@@ -280,24 +258,24 @@ export default function ChatbotPage() {
         }
       } catch (aiError) {
         console.error('OpenAI service error:', aiError);
-        let errorMessage = "I'm having trouble processing your request right now. Please try again in a moment.";
+        let errorMessage = t('chatbot.page.messages.processingError');
 
-        // Provide specific error messages for common issues
         if (aiError.message.includes('quota')) {
-          errorMessage = "I've reached my usage limit for today. Please try again later or contact support.";
+          errorMessage = t('chatbot.page.messages.quotaError');
         } else if (aiError.message.includes('api_key')) {
-          errorMessage = "There's a configuration issue with my AI service. Please contact support.";
+          errorMessage = t('chatbot.page.messages.apiKeyError');
         }
 
         setMessages(prev => [...prev, { role: 'assistant', content: errorMessage, createdAt: new Date().toISOString() }]);
         await saveChatRow('assistant', errorMessage);
       }
     } catch (err) {
+      const msg = t('chatbot.page.messages.networkError');
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: 'Network error. Please try again.', createdAt: new Date().toISOString() },
+        { role: 'assistant', content: msg, createdAt: new Date().toISOString() },
       ]);
-      await saveChatRow('assistant', 'Network error. Please try again.');
+      await saveChatRow('assistant', msg);
     } finally {
       setIsSending(false);
     }
@@ -314,30 +292,25 @@ export default function ChatbotPage() {
     <div className="flex flex-col h-full bg-[#002147] text-white">
       <header className="sticky top-0 z-10 border-b border-white/10 bg-[#002147]">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          {/* Left: History icon -> navigate to history page */}
           <button
             type="button"
-            onClick={() => navigate('/profile/chatbot-history')} // <-- change if needed
+            onClick={() => navigate('/profile/chatbot-history')}
             className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
-            title="Chat history"
-            aria-label="Open chat history"
+            title={t('chatbot.page.header.historyTitle')}
+            aria-label={t('chatbot.page.header.historyAria')}
           >
-            {/* Clock-arrow (history) icon */}
             <FiClock />
           </button>
 
-          {/* Spacer to keep icons at edges */}
           <div className="flex-1" />
 
-          {/* Right: New conversation (+) */}
           <button
             type="button"
             onClick={handleNewConversation}
             className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
-            title="New conversation"
-            aria-label="Start a new conversation"
+            title={t('chatbot.page.header.newTitle')}
+            aria-label={t('chatbot.page.header.newAria')}
           >
-            {/* Plus icon */}
             <FiPlus />
           </button>
         </div>
@@ -354,7 +327,6 @@ export default function ChatbotPage() {
                   }`}
               >
                 {m.content.split('\n').map((line, lineIdx) => {
-                  // Check if line contains a markdown link
                   const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
                   if (linkMatch) {
                     const [fullMatch, linkText, linkUrl] = linkMatch;
@@ -365,10 +337,7 @@ export default function ChatbotPage() {
                       <div key={lineIdx}>
                         {beforeLink}
                         <button
-                          onClick={() => {
-                            // Redirect to Stripe checkout
-                            window.location.href = linkUrl;
-                          }}
+                          onClick={() => { window.location.href = linkUrl; }}
                           className="text-[#BFA200] underline hover:no-underline font-semibold bg-transparent border-none cursor-pointer p-0"
                         >
                           {linkText}
@@ -378,22 +347,11 @@ export default function ChatbotPage() {
                     );
                   }
 
-                  // Check if line is bold
                   if (line.startsWith('**') && line.endsWith('**')) {
-                    return (
-                      <div key={lineIdx} className="font-bold">
-                        {line.slice(2, -2)}
-                      </div>
-                    );
+                    return <div key={lineIdx} className="font-bold">{line.slice(2, -2)}</div>;
                   }
-
-                  // Check if line is italic
                   if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-                    return (
-                      <div key={lineIdx} className="italic opacity-75">
-                        {line.slice(1, -1)}
-                      </div>
-                    );
+                    return <div key={lineIdx} className="italic opacity-75">{line.slice(1, -1)}</div>;
                   }
 
                   return <div key={lineIdx}>{line}</div>;
@@ -408,7 +366,7 @@ export default function ChatbotPage() {
           {isSending && (
             <div className="flex justify-start">
               <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-black/10 text-white shadow-sm">
-                Typing...
+                {t('chatbot.page.typing')}
               </div>
             </div>
           )}
@@ -418,16 +376,15 @@ export default function ChatbotPage() {
 
       <footer>
         <div className="max-w-3xl mx-auto w-full px-3 py-3">
-          {/* Change items-end -> items-center */}
           <div className="relative">
             <Input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me something!"
+              placeholder={t('chatbot.page.inputPlaceholder')}
               disabled={isSending}
-              className="h-12 pr-12 md:text-base"   // give the input a clear height + extra right padding
+              className="h-12 pr-12 md:text-base"
             />
 
             <button
@@ -435,9 +392,9 @@ export default function ChatbotPage() {
               disabled={!canSend}
               className={`absolute inset-y-0 right-2 flex items-center justify-center rounded-xl
       ${canSend ? 'cursor-pointer text-white hover:opacity-90' : 'text-white cursor-not-allowed'}`}
-              aria-label="Send message"
-              title="Send"
-              style={{ width: '2.25rem' }}          // ~w-9; keeps a tidy square click target
+              aria-label={t('chatbot.page.sendAria')}
+              title={t('chatbot.page.sendTitle')}
+              style={{ width: '2.25rem' }}
             >
               <FiSend className="text-xl" />
             </button>

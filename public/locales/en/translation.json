@@ -1071,6 +1071,9 @@
         "apiKeyError": "There's a configuration issue with my AI service. Please contact support.",
         "networkError": "Network error. Please try again."
       }
+    },
+    "previewToast": {
+      "newFrom": "New from Daniel"
     }
   },
   "directMessages": {

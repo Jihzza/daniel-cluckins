@@ -1071,6 +1071,9 @@
                 "apiKeyError": "Há um problema de configuração com meu serviço de IA. Por favor, contate o suporte.",
                 "networkError": "Erro de rede. Tente novamente."
             }
+        },
+        "previewToast": {
+            "newFrom": "Novo de Daniel"
         }
     },
     "directMessages": {
