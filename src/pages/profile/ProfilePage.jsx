@@ -17,6 +17,8 @@ import ConsultationsBox from '../../components/profile/ConsultationsBox';
 import SubscriptionsBox from '../../components/profile/SubscriptionsBox';
 import PitchDeckBox from '../../components/profile/PitchDeckBox';
 import AccountSettingsBox from '../../components/profile/AccountSettingsBox';
+import ChatbotHistoryBox from '../../components/profile/ChatbotHistoryBox';
+import { getConversationSummaries } from '../../services/chatService';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -67,12 +69,14 @@ export default function ProfilePage() {
           { data: financialData, error: financialError },
           { data: appointmentsData, error: appointmentsError },
           { data: subscriptionsData, error: subscriptionsError },
-          { data: pitchDeckData, error: pitchDeckError }
+          { data: pitchDeckData, error: pitchDeckError },
+          chatbotSummaries
         ] = await Promise.all([
           getFinancialMetrics(user.id),
           getAppointmentsByUserId(user.id),
           getSubscriptionsByUserId(user.id),
-          getPitchDeckRequestsByUserId(user.id)
+          getPitchDeckRequestsByUserId(user.id),
+          getConversationSummaries(user.id)
         ]);
 
         // Handle financial data
@@ -120,7 +124,8 @@ export default function ProfilePage() {
           },
           consultations: consultationsData,
           subscriptions: subscriptionsDataFormatted,
-          pitchDeckRequests: pitchDeckDataFormatted
+          pitchDeckRequests: pitchDeckDataFormatted,
+          chatbotHistory: chatbotSummaries || []
         });
 
       } catch (err) {
@@ -179,6 +184,11 @@ export default function ProfilePage() {
           <PitchDeckBox
             requests={dashboardData.pitchDeckRequests}
             to="/profile/pitch-requests"
+          />
+
+          <ChatbotHistoryBox
+            items={dashboardData.chatbotHistory}
+            to="/profile/chatbot-history"
           />
         </div>
 
