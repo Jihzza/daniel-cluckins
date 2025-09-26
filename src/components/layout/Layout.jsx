@@ -21,6 +21,21 @@ export default function Layout() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
+  useEffect(() => {
+    const clearOnUnload = () => {
+      try {
+        sessionStorage.removeItem('chatbot-session-id');
+        sessionStorage.removeItem('chat_session_id');
+      } catch {}
+    };
+    window.addEventListener('beforeunload', clearOnUnload);
+    window.addEventListener('pagehide', clearOnUnload);
+    return () => {
+      window.removeEventListener('beforeunload', clearOnUnload);
+      window.removeEventListener('pagehide', clearOnUnload);
+    };
+  }, []);
+
   // Measure header/navbar heights (used as offsets for SidebarMenu, etc.)
   useLayoutEffect(() => {
     const observers = [];
@@ -117,7 +132,7 @@ export default function Layout() {
         </main>
 
         {/* Bottom nav (sticky) */}
-        <NavigationBar ref={navBarRef} />
+        <NavigationBar ref={navBarRef} navBarHeight={navBarHeight} />
       </div>
     </ScrollRootContext.Provider>
   );

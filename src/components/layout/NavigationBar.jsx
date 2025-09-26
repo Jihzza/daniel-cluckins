@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { scrollToTop } from "../../utils/scrollPositionManager";
 
+import ChatPreviewToast from "./ChatPreviewToast";
+
 import homeIcon from "../../assets/icons/House Branco.svg";
 import calendarIcon from "../../assets/icons/Calendar Branco.svg";
 import settingsIcon from "../../assets/icons/Settings Branco.svg";
@@ -48,7 +50,7 @@ const BUTTON_CLASS = [
 const BAR_CLASS = "w-full fixed bottom-0 left-0 right-0 bg-black z-50";
 const INNER_CLASS = "mx-auto grid grid-cols-5 items-center w-full lg:w-[80%] px-2";
 
-export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick }) {
+export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, navBarHeight = 56 }) {
   // Double-click tracking for home icon
   const homeClickTimeoutRef = useRef(null);
   const homeClickCountRef = useRef(0);
@@ -297,7 +299,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick }
                     alt={item.label}
                     className="w-full h-full object-contain p-[1px] pointer-events-none select-none"
                   />
-                  {item.isChat && showPopup && (
+                  {item.isChat && showPopup && location.pathname !== '/chat' && (
                     <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 bg-black/80 text-white text-xs p-2 rounded-lg shadow-lg border border-white/20 pointer-events-none">
                       <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-black/80" />
                       {welcomePreview.substring(0, 50)}... {/* Truncate if too long */}
@@ -316,6 +318,12 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick }
           );
         })}
       </div>
+      <ChatPreviewToast
+        open={showPopup && location.pathname !== '/chat'}
+        text={welcomePreview}
+        bottomOffsetPx={navBarHeight + 8}
+        onClick={() => navigate('/chat')}
+        />
     </nav>
   );
 }

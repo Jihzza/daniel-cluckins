@@ -18,6 +18,8 @@ import { ScrollRootContext } from '../contexts/ScrollRootContext';
 import ChatWithMeSection from './sections/ChatWithMeSection';
 
 import { useTranslation } from 'react-i18next';
+import { openaiService } from '../services/openaiService';
+import { emitWelcomePreview } from '../utils/welcomeEmitter';
 
 export default function HomePage() {
     const navigate = useNavigate();
@@ -162,6 +164,19 @@ export default function HomePage() {
 
         observer.observe(section);
         return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const msg = openaiService.isConfigured()
+                  ? await openaiService.getWelcomeMessage(null,null)
+                  : "👋 Welcome! Tap the chat to ask anything.";
+                if (!cancelled) emitWelcomePreview(msg);
+            } catch {}
+        })();
+        return () => { cancelled = true; };
     }, []);
 
     return (

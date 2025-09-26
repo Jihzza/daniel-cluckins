@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import BotIcon from "../../assets/icons/DaGalow Branco.svg"; // adjust if your path differs
 
@@ -7,7 +7,20 @@ import BotIcon from "../../assets/icons/DaGalow Branco.svg"; // adjust if your p
  */
 export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx = 0 }) {
   const cleaned = (text || "").replace(/\s+/g, " ").trim();
-  const preview = cleaned.length > 120 ? `${cleaned.slice(0, 120)}…` : cleaned;
+  const full = cleaned.length > 120 ? `${cleaned.slice(0, 120)}…` : cleaned;
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (!open) return;
+    setIdx(0);
+    const speed = 18;
+    const id = setInterval(() => {
+      setIdx((i) => (i < full.length ? i + 1 : i));
+    }, 30);
+    return () => clearInterval(id);
+  }, [open, full]);
+
+  const preview = useMemo(() => full.slice(0, idx), [full, idx]);
 
   return (
     <AnimatePresence>
@@ -26,6 +39,7 @@ export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx =
             bottom: `calc(${bottomOffsetPx}px + env(safe-area-inset-bottom))`,
             zIndex: 60, // above the nav (nav is z-50)
           }}
+          aria-live="polite"
         >
           <div className="flex items-start gap-3">
             <img src={BotIcon} alt="" className="w-6 h-6 mt-0.5" />
