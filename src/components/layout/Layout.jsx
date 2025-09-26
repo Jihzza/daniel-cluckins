@@ -12,7 +12,7 @@ export default function Layout() {
   const headerRef = useRef(null);
   const navBarRef = useRef(null);
   const mainContentRef = useRef(null);
-
+  const [sessionId, setSessionId] = useState(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [navBarHeight, setNavBarHeight] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -59,6 +59,16 @@ export default function Layout() {
     }
 
     return () => observers.forEach(o => o.disconnect());
+  }, []);
+
+  useEffect(() => {
+    const existing = localStorage.getItem('chat_session_id');
+    const sid = existing ||
+     (typeof crypto?.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Math.random().toString(36).lastIndexOf(2));
+    localStorage.setItem('chat_session_id', sid);
+    setSessionId(sid);
   }, []);
 
   // NEW: Scroll to the hash target after navigating to "/"

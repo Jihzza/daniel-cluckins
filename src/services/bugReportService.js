@@ -15,11 +15,7 @@ const ALLOWED_MIME = new Set([
   // Images
   'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
   // Docs
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-  'application/msword',                                                     // .doc
-  'text/plain',                                                             // .txt
-  'text/markdown'                                                           // .md
+  'application/pdf', 'application/x-pdf', 'application/octet-stream', 'text/plain'
 ]);
 
 const ALLOWED_EXT = new Set([
@@ -42,6 +38,16 @@ const allowByMimeOrExt = (file) => {
   return hasAllowedExt(file.name || '');
 };
 
+const guessMimeFromExt = (name = '') => {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.txt') || lower.endsWith('.log')) return 'text/plain';
+  if (lower.endsWith('.md')) return 'text/markdown';
+  if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (lower.endsWith('.doc')) return 'application/msword';
+  return undefined;
+};
+
 /** Upload one file to "bug-reports/<reportId>/<timestamp>-<safeName>" */
 const uploadOneFile = async (file, reportId) => {
   const safeName = String(file.name || 'file')
@@ -56,7 +62,7 @@ const uploadOneFile = async (file, reportId) => {
     .upload(path, file, {
       cacheControl: '3600',
       upsert: false,
-      contentType: file.type || undefined
+      contentType: file.type || guessMimeFromExt(file.name) || 'application/octet-stream'
     });
 
   if (upErr) {
@@ -166,6 +172,8 @@ export const submitBugReport = async (reportData, userId = null) => {
 
   return {
     data: { id: inserted.id, filesInserted, uploaded: uploadedNames },
-    error: null
+    error: validFiles.length === 0 && files.length > 0
+      ? new Error('All attachments were rejected or failed to upload.')
+      : null
   };
 };

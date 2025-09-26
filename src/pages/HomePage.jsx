@@ -39,14 +39,14 @@ export default function HomePage() {
             };
             i18n.on('languageChanged', onChange);
             return () => i18n.off('languageChanged', onChange);
-        } catch {}
+        } catch { }
     }, [i18n, t]);
 
     // All buttons on home page go directly to step 2 (specific service step)
     const handleScheduleService = (serviceId, details = null) => {
         // Build the URL with service parameter
         let url = `/schedule?service=${serviceId}`;
-        
+
         // If Coaching, add plan parameter
         if (serviceId === 'coaching' && details) {
             // accept either { tier } payload or a direct id
@@ -170,11 +170,19 @@ export default function HomePage() {
         let cancelled = false;
         (async () => {
             try {
-                const msg = openaiService.isConfigured()
-                  ? await openaiService.getWelcomeMessage(null,null)
-                  : "👋 Welcome! Tap the chat to ask anything.";
-                if (!cancelled) emitWelcomePreview(msg);
-            } catch {}
+                // HomePage.jsx
+                const msg = await generateWelcomeForSession({
+                    sessionId,                    // from context
+                    user,                         // same user object ChatbotPage uses
+                    fetchHistory: getHistory,     // same DB history loader ChatbotPage uses
+                    systemPrompt: CHAT_SYSTEM,    // the exact same system prompt
+                    model: CHAT_MODEL,            // same model & temperature
+                    temperature: CHAT_TEMP,
+                    timezone: 'Europe/Madrid',    // or your app-wide TZ
+                });
+                emitWelcomePreview(msg);
+
+            } catch { }
         })();
         return () => { cancelled = true; };
     }, []);

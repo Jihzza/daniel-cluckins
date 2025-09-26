@@ -49,3 +49,23 @@ export async function getConversationSummaries(userId) {
 
   return list;
 }
+
+export async function generateWelcomeForSession({
+  sessionId,
+  user,                 // { id, name, locale, ... }
+  fetchHistory,         // (sessionId) => Promise<Message[]>
+  systemPrompt,         // same string ChatbotPage uses
+  model = 'gpt-4o-mini',
+  temperature = 0.2,
+  timezone = Intl.DateTimeFormat().resolvedOptions().timeZone, // or your fixed one
+}) {
+  const history = await fetchHistory(sessionId);      // pull last N messages from DB
+  const msgs = [
+    { role: 'system', content: systemPrompt },
+    // include a compact summary of history if you already do this on ChatbotPage
+    ...history.map(h => ({ role: h.role, content: h.content })),
+    { role: 'user', content: 'Start the conversation with a short, friendly welcome.' }
+  ];
+
+  return openaiService.chatCompletion({ model, temperature, messages: msgs });
+}
