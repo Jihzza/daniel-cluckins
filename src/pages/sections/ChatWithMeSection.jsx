@@ -12,7 +12,7 @@ export default function ChatWithMeSection() {
   const navigate = useNavigate();              // <— and this
 
   return (
-    <section className="max-w-4xl mx-auto py-4 text-center space-y-6 md:px-6" id="chat-section">
+    <section id="chat-section" className="max-w-4xl mx-auto py-4 text-center space-y-6 md:px-6">
       <SectionTextBlack title={t('chatWithMe.title')}>
         {t('chatWithMe.subtitle')}
       </SectionTextBlack>

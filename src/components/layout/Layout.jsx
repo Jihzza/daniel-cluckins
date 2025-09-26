@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 // --- CHILD COMPONENT IMPORTS ---
@@ -8,228 +8,117 @@ import SidebarMenu from './SidebarMenu';
 import { useAuth } from '../../contexts/AuthContext';
 import { ScrollRootContext } from '../../contexts/ScrollRootContext';
 
-// --- HOOKS ---
-// For maintainability, this should be in its own file (e.g., /src/hooks/useVisualViewport.js)
-// and imported here, but is included for completeness.
-function useVisualViewport() {
-  const [viewport, setViewport] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
-
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const handleResize = () => {
-      setViewport({
-        width: vv.width,
-        height: vv.height,
-      });
-    };
-
-    vv.addEventListener('resize', handleResize);
-    vv.addEventListener('scroll', handleResize);
-    handleResize(); // Set initial size
-
-    return () => {
-      vv.removeEventListener('resize', handleResize);
-      vv.removeEventListener('scroll', handleResize);
-    };
-  }, []);
-
-  return viewport;
-}
-
 export default function Layout() {
-  // --- STATE ---
-  const [isMenuOpen, setMenuOpen] = useState(false);
-  // Chatbot removed
-  const [showScrollToTop, setShowScrollToTop] = useState(false);
-
   const headerRef = useRef(null);
   const navBarRef = useRef(null);
   const mainContentRef = useRef(null);
 
   const [headerHeight, setHeaderHeight] = useState(0);
   const [navBarHeight, setNavBarHeight] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
-  const viewport = useVisualViewport(); // Use the keyboard-aware viewport hook
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  // Track navigation history for go back functionality
-  const [navigationHistory, setNavigationHistory] = useState([]);
-  const [currentPath, setCurrentPath] = useState(location.pathname);
-
-  // --- HANDLERS ---
-  const handleMenuClick = () => setMenuOpen(!isMenuOpen);
-  const handleCloseMenu = () => setMenuOpen(false);
-
-  const handleScrollToTop = () => {
-    if (mainContentRef.current) {
-      mainContentRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  const handleNavigate = (path) => {
-    // If clicking on the current active page, go back to previous page
-    if (path === currentPath && navigationHistory.length > 0) {
-      const previousPath = navigationHistory[navigationHistory.length - 1];
-      navigate(previousPath);
-      // Remove the last item from history since we're going back
-      setNavigationHistory((prev) => prev.slice(0, -1));
-    } else {
-      // Normal navigation - add current path to history and navigate to new path
-      if (currentPath !== path) {
-        setNavigationHistory((prev) => [...prev, currentPath]);
-        setCurrentPath(path);
-      }
-      navigate(path);
-    }
-    handleCloseMenu();
-  };
-
-  // --- LIFECYCLE HOOKS ---
+  // Measure header/navbar heights (used as offsets for SidebarMenu, etc.)
   useLayoutEffect(() => {
-    setHeaderHeight(headerRef.current?.offsetHeight || 0);
-    setNavBarHeight(navBarRef.current?.offsetHeight || 0);
-  }, [location.pathname]); // Recalculate on route change
+    const observers = [];
 
-  // Update current path when location changes (for external navigation)
-  useEffect(() => {
-    if (location.pathname !== currentPath) {
-      setCurrentPath(location.pathname);
+    if (headerRef.current) {
+      const roHeader = new ResizeObserver(() => {
+        setHeaderHeight(headerRef.current?.offsetHeight ?? 0);
+      });
+      roHeader.observe(headerRef.current);
+      observers.push(roHeader);
+      setHeaderHeight(headerRef.current.offsetHeight ?? 0);
     }
-  }, [location.pathname, currentPath]);
 
-  // Handle scroll to top button visibility
+    if (navBarRef.current) {
+      const roNav = new ResizeObserver(() => {
+        setNavBarHeight(navBarRef.current?.offsetHeight ?? 0);
+      });
+      roNav.observe(navBarRef.current);
+      observers.push(roNav);
+      setNavBarHeight(navBarRef.current.offsetHeight ?? 0);
+    }
+
+    return () => observers.forEach(o => o.disconnect());
+  }, []);
+
+  // NEW: Scroll to the hash target after navigating to "/"
   useEffect(() => {
-    const handleScroll = () => {
-      if (mainContentRef.current) {
-        const scrollTop = mainContentRef.current.scrollTop;
-        setShowScrollToTop(scrollTop > 200);
+    if (location.pathname !== '/' || !location.hash) return;
+
+    const id = decodeURIComponent(location.hash.slice(1));
+    let tries = 0;
+
+    const tryScroll = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        // Scrolls the nearest scrollable ancestor; your <main> is overflow-y-auto
+        el.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+        return;
+      }
+      // Retry briefly in case the section mounts a moment later
+      if (tries < 30) {
+        tries += 1;
+        requestAnimationFrame(tryScroll);
       }
     };
 
-    const scrollElement = mainContentRef.current;
-    if (scrollElement) {
-      scrollElement.addEventListener('scroll', handleScroll);
-      return () => scrollElement.removeEventListener('scroll', handleScroll);
-    }
-  }, []);
+    // Wait until <Outlet/> children have painted
+    requestAnimationFrame(tryScroll);
+  }, [location.pathname, location.hash, location.key]);
 
-
-  // Trigger welcome-message on first load to seed chatbot message
+  // Optional: when landing on "/" without a hash, reset scroll to top
   useEffect(() => {
-    try {
-      const alreadyTriggered = sessionStorage.getItem('welcome_triggered');
-      if (alreadyTriggered) return;
-
-      const sidKey = 'chatbot-session-id';
-      let sessionId = sessionStorage.getItem(sidKey) || localStorage.getItem(sidKey);
-      if (!sessionId) {
-        sessionId = crypto.randomUUID();
+    if (location.pathname === '/' && !location.hash && mainContentRef.current) {
+      // Use "instant" to avoid animation stutter; fall back if not supported
+      try {
+        mainContentRef.current.scrollTo({ top: 0, behavior: 'instant' });
+      } catch {
+        mainContentRef.current.scrollTop = 0;
       }
-      // Keep both storages in sync
-      try { localStorage.setItem(sidKey, sessionId); } catch {}
-      sessionStorage.setItem(sidKey, sessionId);
-
-      sessionStorage.setItem('welcome_triggered', '1');
-
-      // Call Netlify function
-      fetch('/.netlify/functions/welcome-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: sessionId,
-          user_id: isAuthenticated ? user?.id : null
-        })
-      })
-        .then(async (res) => {
-          if (!res.ok) throw new Error('Failed to generate welcome');
-          const { content } = await res.json();
-          sessionStorage.setItem('pending_welcome_message', content);
-          window.dispatchEvent(new CustomEvent('welcomeMessageReady'));
-        })
-        .catch((error) => {
-          console.error('Error fetching welcome:', error);
-          const fallback = '👋 Welcome! I\'m here to help with Daniel\'s coaching services. What can I do for you?';
-          sessionStorage.setItem('pending_welcome_message', fallback);
-          window.dispatchEvent(new CustomEvent('welcomeMessageReady'));
-        });
-    } catch (error) {
-      console.error('Error triggering welcome:', error);
     }
-  }, [isAuthenticated, user?.id]);
+  }, [location.pathname, location.hash]);
 
-  // --- RENDER LOGIC ---
+  const handleMenuClick = () => setIsMenuOpen(true);
+  const handleCloseMenu = () => setIsMenuOpen(false);
+
+  const handleNavigate = (to) => {
+    setIsMenuOpen(false);
+    // "to" can be "/#section-id" from your sidebar items
+    navigate(to);
+  };
+
   return (
-    // This is the main application container.
-    // Using dvh (dynamic viewport height) instead of viewport.height to prevent
-    // scaling issues during pinch zoom while still handling keyboard properly.
-    <div
-      className="h-full w-full flex flex-col bg-[#002147] min-h-dvh"
-    >
-      <Header ref={headerRef} onMenuClick={handleMenuClick} />
+    <ScrollRootContext.Provider value={{ root: mainContentRef }}>
+      <div className="h-full w-full flex flex-col bg-[#002147] min-h-dvh">
+        {/* Header (sticky) */}
+        <Header ref={headerRef} onMenuClick={handleMenuClick} />
 
-      <SidebarMenu
-        isOpen={isMenuOpen}
-        onClose={handleCloseMenu}
-        onNavigate={handleNavigate}
-        topOffset={headerHeight}
-        bottomOffset={navBarHeight}
-        isAuthenticated={isAuthenticated}
-      />
+        {/* Sidebar (overlay) */}
+        <SidebarMenu
+          isOpen={isMenuOpen}
+          onClose={handleCloseMenu}
+          onNavigate={handleNavigate}
+          topOffset={headerHeight}
+          bottomOffset={navBarHeight}
+          isAuthenticated={isAuthenticated}
+        />
 
-      <main ref={mainContentRef} className="flex-grow min-h-0 overflow-y-auto w-full overflow-x-hidden pb-16 md:pb-20">
-        <ScrollRootContext.Provider value={mainContentRef}>
-          <Outlet />
-        </ScrollRootContext.Provider>
-      </main>
-
-      {/* Bottom navigation */}
-      <div ref={navBarRef} className="relative">
-        <NavigationBar onNavigate={handleNavigate} />
-      </div>
-
-
-      {/* SCROLL TO TOP BUTTON - Only show on home page */}
-      {location.pathname === '/' && (
-        <button
-          onClick={handleScrollToTop}
-          className={[
-            'fixed right-4 z-[70]',
-            'w-12 h-12 rounded-full',
-            'bg-black',
-            'text-[#bfa200]',
-            'shadow-lg backdrop-blur-sm',
-            'flex items-center justify-center',
-            'transition-all duration-200 ease-in-out',
-            'hover:scale-105 active:scale-95',
-            'focus:outline-none focus:ring focus:ring-[#bfa200]',
-            showScrollToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none',
-          ].join(' ')}
-          style={{
-            bottom: `calc(4rem + 1rem + env(safe-area-inset-bottom))`,
-          }}
-          aria-label="Scroll to top"
-          title="Scroll to top"
+        {/* Main scrollable content area */}
+        <main
+          ref={mainContentRef}
+          className="flex-grow min-h-0 overflow-y-auto w-full overflow-x-hidden pb-16 md:pb-20"
         >
-          <svg
-            className="w-6 h-6"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path d="M12 4l-7 7h4v7h6v-7h4z" />
-          </svg>
-        </button>
-      )}
-    </div>
+          <Outlet />
+        </main>
+
+        {/* Bottom nav (sticky) */}
+        <NavigationBar ref={navBarRef} />
+      </div>
+    </ScrollRootContext.Provider>
   );
 }

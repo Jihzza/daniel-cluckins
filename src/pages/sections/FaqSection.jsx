@@ -22,7 +22,7 @@ export default function FaqSection() {
     const faqData = t('faq.items', { returnObjects: true });
 
     return (
-        <section className="h-auto py-4 md:px-6">
+        <section id="faq-section" className="h-auto py-4 md:px-6">
             <div className="max-w-2xl mx-auto">
                 {/* 4. Use the translated title */}
                 <SectionTextBlack title={faqTitle} />

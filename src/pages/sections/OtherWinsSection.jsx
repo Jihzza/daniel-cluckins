@@ -12,7 +12,7 @@ export default function OtherWinsSection() {
   const { t } = useTranslation();
 
   return (
-    <section className="mx-auto flex w-full flex-col text-center md:px-6 py-4 md:py-4">
+    <section id="other-wins-section" className="mx-auto flex w-full flex-col text-center md:px-6 py-4 md:py-4">
       {/* Title + subtitle */}
       <SectionTextBlack title={t("otherWins.title")}>
         {t("otherWins.bodyTransformation")}

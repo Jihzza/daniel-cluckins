@@ -60,7 +60,7 @@ export default function InteractiveSections() {
   );
 
   return (
-    <section className="w-full max-w-6xl mx-auto py-8">
+    <section id="interactive-sections" className="w-full max-w-6xl mx-auto py-8">
       <SectionNavigator
         sections={sections}
         activeSectionId={activeSection}   // ✅ pass the prop name the component expects

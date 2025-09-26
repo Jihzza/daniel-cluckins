@@ -13,7 +13,7 @@ import ServicesPreview from '../../components/hero/ServicesPreview';
 export default function HeroSection({ onScheduleConsultation, onScheduleCoaching, onScheduleInvestment }) {
     return (
         // The overflow-hidden here can now be safely removed.
-        <section className="w-full py-2 md:py-4 sm:px-6">
+        <section id="hero-section" className="w-full py-2 md:py-4 sm:px-6">
             <LearnFromHeader />
 
             {/* Client Image - SOLUTION APPLIED HERE */}

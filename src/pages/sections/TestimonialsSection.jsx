@@ -61,7 +61,7 @@ export default function TestimonialsSection() {
     );
 
     return (
-        <section ref={sectionRef} id="testimonials-section" className="w-full max-w-5xl mx-auto pt-4 pb-4 text-center md:px-6 ">
+        <section id="testimonials-section" ref={sectionRef} className="w-full max-w-5xl mx-auto pt-4 pb-4 text-center md:px-6 ">
             <SectionTextWhite title={t('testimonials.title')}>
                 {t('testimonials.subtitle')}
             </SectionTextWhite>

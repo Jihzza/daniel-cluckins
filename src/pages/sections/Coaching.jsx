@@ -77,7 +77,7 @@ export default function Coaching({ onBookCoaching }) {
   const onClick = () => onBookCoaching?.(selectedPlanId);
 
   return (
-    <section
+    <section id="coaching-section"
       ref={sectionRef}
       className="w-full max-w-5xl flex flex-col justify-center items-center mx-auto py-4 space-y-4 md:px-6"
     >

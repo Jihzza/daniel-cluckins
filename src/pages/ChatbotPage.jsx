@@ -100,13 +100,20 @@ export default function ChatbotPage() {
         const sid = sessionStorage.getItem(SESSION_STORAGE_KEY);
         if (!sid) return;
 
-        const { data, error } = await supabase
+        let q = supabase
           .from('chatbot_conversations')
           .select('role, content, created_at')
-          .eq('session_id', sid)
-          .or(`user_id.eq.${user?.id ?? ''},user_id.is.null`)
-          .order('created_at', { ascending: true });
+          .eq('session_id', sid);
 
+        if (user?.id) {
+          // user-specific rows OR system rows with user_id NULL
+          q = q.or(`user_id.eq.${user.id},user_id.is.null`);
+        } else {
+          // guest: only rows created as anonymous
+          q = q.is('user_id', null);
+        }
+
+        const { data, error } = await q.order('created_at', { ascending: true });
         if (error) {
           console.error('Failed to load chat history:', error);
         } else if (data && data.length > 0) {

@@ -1,68 +1,96 @@
-// src/contexts/AuthContext.js
-// -----------------------------------------------------------
-// Provides a <AuthProvider> wrapper and a handy useAuth() hook.
-// Every component beneath <AuthProvider> can call useAuth()
-// to know if someone is logged in.
-// -----------------------------------------------------------
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+// ⚠️ Adjust the import path if your supabase client lives elsewhere
 import { supabase } from '../lib/supabaseClient';
-import { getUserSession } from '../services/authService';
 
-// 🔸 Step 1 – Create an *empty* context object.
-const AuthContext = createContext();
+/**
+ * AuthContext
+ * - Hydrates from current session on mount
+ * - Subscribes to Supabase auth events to keep state in sync
+ * - Exposes a robust `logout()` that treats 401/403 as success
+ */
+const AuthContext = createContext(null);
 
-// 🔸 Step 2 – Build a React component that stores auth state
-//            and *provides* it to children via the context.
-export const AuthProvider = ({ children }) => {
-  // Local state hooks ---------------------------------------
-  const [user,     setUser]     = useState(null); // who is logged in?
-  const [session,  setSession]  = useState(null); // raw session data
-  const [loading,  setLoading]  = useState(true); // still checking?
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // 🔸 Step 3 – Run once on mount to hydrate and start the listener.
+  // --- Initial hydration + subscription to auth events ---
   useEffect(() => {
-    // (a) Check local storage for an existing session -------------
+    let mounted = true;
+
+    // 1) Hydrate from current client session (fast, client-side)
     (async () => {
-      const { data } = await getUserSession();      // wrapper call
-      setSession(data.session);                     // may be null
-      setUser(data.session?.user ?? null);          // safe fallback
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(data?.session ?? null);
+        setUser(data?.session?.user ?? null);
+      } catch (err) {
+        console.error('[AuthContext] getSession error:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    // 2) Subscribe to auth state changes (SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED / etc.)
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession ?? null);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
-    })(); // ⇢ This pattern is an “IIFE” = immediately-invoked function.
+    });
 
-    // (b) Listen for login / logout across *any* browser tab -----
-    const { data: listener } =
-      supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session);                    // new session or null
-        setUser(session?.user ?? null);
-        setLoading(false);
-      });
+    return () => {
+      mounted = false;
+      subscription?.subscription?.unsubscribe?.();
+    };
+  }, []);
 
-    // (c) Cleanup: React calls this before unmount/re-run.
-    return () => listener.subscription.unsubscribe();
-  }, []); // [] ⇒ run only once after first render.
+  const isAuthenticated = !!user;
 
-  // Stuff we want every component to see ----------------------
-  const value = {
-    session,
-    user,
-    loading,
-    isAuthenticated: !!user, // nice boolean helper
+  // --- Robust logout that handles 401/403 gracefully ---
+  const logout = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      // If there is no current session, consider the user logged out
+      if (!data?.session) {
+        setUser(null);
+        setSession(null);
+        return { error: null };
+      }
+
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      // Known behavior: logout endpoint can return 401/403 if token already invalid/rotated
+      if (!error || error?.status === 401 || error?.status === 403) {
+        setUser(null);
+        setSession(null);
+        return { error: null };
+      }
+
+      // Any other error: surface to caller
+      console.error('[AuthContext] signOut error:', error);
+      return { error };
+    } catch (err) {
+      console.error('[AuthContext] logout threw:', err);
+      // Treat unexpected exceptions as success for UX (state is cleared below)
+      setUser(null);
+      setSession(null);
+      return { error: null };
+    }
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, session, loading, isAuthenticated, logout }),
+    [user, session, loading]
   );
-};
 
-// 🔸 Step 4 – Little helper so components write:
-//             const { user } = useAuth();
-export const useAuth = () => {
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (ctx === undefined) {
+  if (!ctx) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return ctx;
-};
+}

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeftOnRectangleIcon } from '@heroicons/react/24/outline';
 
 import { useAuth } from '../../contexts/AuthContext';
-import { getProfile, signOut } from '../../services/authService';
+import { getProfile } from '../../services/authService';
 import { getAppointmentsByUserId } from '../../services/appointmentService';
 import { getSubscriptionsByUserId } from '../../services/subscriptionService';
 import { getPitchDeckRequestsByUserId } from '../../services/pitchDeckServices';
@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [profile, setProfile] = useState({
     full_name: '',
@@ -134,7 +135,7 @@ export default function ProfilePage() {
   }, [user, t]);
 
   const handleLogout = async () => {
-    await signOut();
+    await logout();
     navigate('/login');
   };
 

@@ -1,134 +1,171 @@
-// src/services/bugReportService.js
-
-/**
- * A service module for handling bug report submissions.
- * This encapsulates all logic for sending bug data to the Supabase 'bug_reports' table.
- *
- * @module services/bugReportService
- */
-
-// Import the configured Supabase client, just like in your other services.
 import { supabase } from '../lib/supabaseClient';
 
-/**
- * Uploads an image file to Supabase Storage and returns the public URL.
- *
- * @param {File} imageFile - The image file to upload.
- * @param {string} reportId - The bug report ID to associate with the image.
- * @returns {Promise<{url: string|null, error: object|null}>} - An object containing either the public URL or an error.
- */
-const uploadImage = async (imageFile, reportId) => {
-  try {
-    // Create a unique filename
-    const fileExt = imageFile.name.split('.').pop();
-    const fileName = `${reportId}-${Date.now()}.${fileExt}`;
-    const filePath = `bug-reports/${fileName}`;
+/** Convert FileList/array to array of File */
+const toFileArray = (maybeFiles) => {
+  if (!maybeFiles) return [];
+  if (Array.isArray(maybeFiles)) return maybeFiles;
+  try { return Array.from(maybeFiles); } catch { return []; }
+};
 
-    // Upload the file to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from('bug-reports')
-      .upload(filePath, imageFile, {
-        cacheControl: '3600',
-        upsert: false
-      });
+// IMPORTANT: client & server must match this if you change it
+const MAX_BYTES = 20 * 1024 * 1024; // 20 MB per file
 
-    if (error) {
-      console.error('Error uploading image:', error.message);
-      return { url: null, error };
-    }
+// Allowlist (MIME + extensions)
+const ALLOWED_MIME = new Set([
+  // Images
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+  // Docs
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/msword',                                                     // .doc
+  'text/plain',                                                             // .txt
+  'text/markdown'                                                           // .md
+]);
 
-    // Get the public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('bug-reports')
-      .getPublicUrl(filePath);
+const ALLOWED_EXT = new Set([
+  '.jpg', '.jpeg', '.png', '.webp', '.gif',
+  '.pdf', '.docx', '.doc', '.txt', '.md', '.log'
+]);
 
-    return { url: publicUrl, error: null };
-  } catch (err) {
-    console.error('Error in uploadImage:', err);
-    return { url: null, error: err };
+const hasAllowedExt = (name = '') => {
+  const lower = name.toLowerCase();
+  for (const ext of ALLOWED_EXT) {
+    if (lower.endsWith(ext)) return true;
   }
+  return false;
+};
+
+const allowByMimeOrExt = (file) => {
+  const mime = (file.type || '').toLowerCase();
+  if (ALLOWED_MIME.has(mime)) return true;
+  if (mime.startsWith('image/')) return true; // generic image/*
+  return hasAllowedExt(file.name || '');
+};
+
+/** Upload one file to "bug-reports/<reportId>/<timestamp>-<safeName>" */
+const uploadOneFile = async (file, reportId) => {
+  const safeName = String(file.name || 'file')
+    .replace(/[^\w.\-]+/g, '_')
+    .slice(-150);
+
+  const path = `${String(reportId)}/${Date.now()}-${safeName}`;
+
+  const { data: upData, error: upErr } = await supabase
+    .storage
+    .from('bug-reports') // bucket
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || undefined
+    });
+
+  if (upErr) {
+    console.error('[bugReport] storage upload error:', file.name, upErr);
+    throw upErr;
+  }
+
+  // Public bucket: store a public URL
+  const { data: pub } = supabase.storage.from('bug-reports').getPublicUrl(upData.path);
+  const file_url = pub?.publicUrl || null;
+
+  return {
+    file_url,
+    file_name: file.name,
+    mime_type: file.type || 'application/octet-stream',
+    size_bytes: file.size ?? 0
+  };
 };
 
 /**
- * Inserts a new bug report into the Supabase database.
- *
- * @param {object} reportData - The bug report data from the form.
- * @param {string} reportData.name - The name of the person submitting the report.
- * @param {string} reportData.email - The email of the person submitting the report.
- * @param {string} reportData.description - The detailed description of the bug.
- * @param {FileList} [reportData.image] - The image file(s) to upload (optional).
- * @param {string} [userId] - The UUID of the authenticated user submitting the report (optional).
- * @returns {Promise<{data: object|null, error: object|null}>} - An object containing either the newly created data or an error.
+ * Submit a new bug report and upload any attachments.
+ * reportData: { name, email, description, attachments }
+ * Returns: { data: { id, filesInserted, uploaded }, error }
  */
 export const submitBugReport = async (reportData, userId = null) => {
-  // Destructure the form data for clarity.
-  const { name, email, description, image } = reportData;
+  const { name, email, description, attachments: rawAttachments } = reportData;
 
-  let imageUrl = null;
+  // 1) Insert the bug report row
+  const { data: inserted, error: insertErr } = await supabase
+    .from('bug_reports')
+    .insert({
+      name,
+      email,
+      description,
+      user_id: userId ?? null
+    })
+    .select()
+    .single();
 
-  // Handle image upload if provided
-  if (image && image.length > 0) {
-    // First, create the bug report to get an ID
-    const { data: initialData, error: initialError } = await supabase
-      .from('bug_reports')
-      .insert({
-        name,
-        email,
-        description,
-        user_id: userId,
-        image_url: null, // Will be updated after image upload
-      })
-      .select()
-      .single();
-
-    if (initialError) {
-      console.error('Error creating initial bug report:', initialError.message);
-      return { data: null, error: initialError };
-    }
-
-    // Upload the image
-    const { url, error: uploadError } = await uploadImage(image[0], initialData.id);
-    
-    if (uploadError) {
-      // If image upload fails, we can still keep the bug report but without image
-      console.error('Error uploading image, keeping bug report without image:', uploadError.message);
-      return { data: initialData, error: null };
-    }
-
-    imageUrl = url;
-
-    // Update the bug report with the image URL
-    const { data, error } = await supabase
-      .from('bug_reports')
-      .update({ image_url: imageUrl })
-      .eq('id', initialData.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating bug report with image URL:', error.message);
-      return { data: initialData, error };
-    }
-
-    return { data, error: null };
-  } else {
-    // No image provided, create bug report without image
-    const { data, error } = await supabase
-      .from('bug_reports')
-      .insert({
-        name,
-        email,
-        description,
-        user_id: userId,
-        image_url: null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating bug report:', error.message);
-    }
-
-    return { data, error };
+  if (insertErr) {
+    console.error('[bugReport] create error:', insertErr);
+    return { data: null, error: insertErr };
   }
+
+  const reportId = String(inserted.id); // bigint or uuid safe
+
+  // 2) Validate files
+  const files = toFileArray(rawAttachments);
+  console.log('[bugReport] received files:', files?.map(f => ({
+    name: f.name, size: f.size, type: f.type
+  })));
+
+  const validFiles = files.filter(f =>
+    f && f.size <= MAX_BYTES && allowByMimeOrExt(f)
+  );
+
+  if (validFiles.length !== files.length) {
+    const rejected = files.filter(f => !validFiles.includes(f));
+    console.warn('[bugReport] rejected files (size/type):', rejected.map(f => ({
+      name: f.name, size: f.size, type: f.type
+    })));
+  }
+
+  // 3) Upload & collect metadata rows
+  const fileRows = [];
+  const uploadedNames = [];
+
+  for (const file of validFiles) {
+    try {
+      const meta = await uploadOneFile(file, reportId);
+      if (!meta.file_url) {
+        console.warn('[bugReport] missing public URL for', file.name);
+        continue;
+      }
+
+      uploadedNames.push(meta.file_name);
+
+      // FK is BIGINT in your schema. Use Number(reportId).
+      fileRows.push({
+        bug_report_id: Number(reportId),
+        file_url: meta.file_url,           // if the bucket is private, store storage 'path' instead
+        file_name: meta.file_name,
+        mime_type: meta.mime_type,
+        size_bytes: meta.size_bytes
+      });
+    } catch (e) {
+      console.error('[bugReport] upload failed:', file?.name, e?.message || e);
+      // continue to next file
+    }
+  }
+
+  // 4) Insert file metadata
+  let filesInserted = 0;
+  if (fileRows.length > 0) {
+    const { error: filesErr } = await supabase
+      .from('bug_report_files')
+      .insert(fileRows);
+
+    if (filesErr) {
+      console.error('[bugReport] files insert error:', filesErr);
+    } else {
+      filesInserted = fileRows.length;
+    }
+  } else {
+    console.warn('[bugReport] no fileRows to insert (likely upload or validation issue)');
+  }
+
+  return {
+    data: { id: inserted.id, filesInserted, uploaded: uploadedNames },
+    error: null
+  };
 };

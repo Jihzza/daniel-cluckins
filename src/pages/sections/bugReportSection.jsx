@@ -52,7 +52,7 @@ export default function BugReportSection() {
 
     // 3. Render component with translated text
     return (
-        <section className="max-w-4xl mx-auto py-8 text-center">
+        <section id="bug-report-section" className="max-w-4xl mx-auto py-8 text-center">
             <SectionTextBlack title={t('bugReport.title')}>
                 {t('bugReport.subtitle')}
             </SectionTextBlack>

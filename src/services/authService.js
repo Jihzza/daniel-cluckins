@@ -47,7 +47,7 @@ export const signInWithGoogle = async () => {
     provider: 'google',
     options: {
       // The redirect must point to the page where the form lives.
-      redirectTo: window.location.origin, 
+      redirectTo: window.location.origin,
     },
   });
 
@@ -62,8 +62,9 @@ export const signInWithGoogle = async () => {
 // Send a reset-password email. Supabse will include a link that returns to /reset-password.
 
 export const sendPasswordResetEmail = async (email) => {
-  return await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password`,
-  }); 
+  return await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
 };
 
 // After the user clicks the "change" button on /reset-password, we ask Supabase to set the *new* password.
@@ -77,9 +78,40 @@ export const updatePassword = async (newPassword) => {
  * Log *out* the current user.
  */
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
   return { error }; // no data on success, only “did an error happen?”
 };
+
+export const safeSignOut = async () => {
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+  if (error && (error.status === 401 || error.status === 403)) {
+    // Known issue: logout endpoint can return 403/401 in edge cases.
+    // Fall back to clearing client state.
+    // Ensure your AuthContext listens to onAuthStateChange and/or do:
+    try {
+      // Best effort: clear any cached session quickly
+      // (supabase-js clears storage on signOut, but we also reset app state)
+      // e.g., setUser(null); setIsAuthenticated(false);
+    } catch { }
+  }
+  return { error: null }; // treat as success for UX
+};
+
+// authService.js
+
+export async function logout() {
+  // Guard: only call signOut if a session exists
+  const { data } = await supabase.auth.getSession();
+  if (!data?.session) return { error: null }; // nothing to revoke
+
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+
+  if (!error || error?.status === 401 || error?.status === 403) {
+    return { error: null };
+  }
+  return { error };
+}
+
 
 /**
  * Ask Supabase whether a saved session already exists
@@ -102,7 +134,7 @@ export const getProfile = async (userId) => {
   if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found, which is ok
     console.error('Error fetching profile:', error);
   }
-  
+
   return { data, error };
 }
 
@@ -110,77 +142,77 @@ export const updateProfile = async (userId, updates) => {
   if (!userId) return { data: null, error: { message: 'User ID is required.' } };
 
   try {
-      const { data, error } = await supabase
-          .from('profiles')
-          .update({
-              ...updates,
-              updated_at: new Date().toISOString(), // Always update the timestamp
-          })
-          .eq('id', userId)
-          .select() // Use .select() to get the updated data back
-          .single(); // Use .single() if you expect only one row to be updated
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(), // Always update the timestamp
+      })
+      .eq('id', userId)
+      .select() // Use .select() to get the updated data back
+      .single(); // Use .single() if you expect only one row to be updated
 
-      if (error) {
-          console.error('Error updating profile:', error);
-          throw error;
-      }
+    if (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
 
-      return { data, error: null };
+    return { data, error: null };
   } catch (error) {
-      return { data: null, error };
+    return { data: null, error };
   }
 };
 
 export const uploadAvatar = async (userId, file) => {
   try {
-      if (!userId || !file) {
-          throw new Error('User ID and file are required for avatar upload.');
-      }
+    if (!userId || !file) {
+      throw new Error('User ID and file are required for avatar upload.');
+    }
 
-      // 1. Define the path for the file in the storage bucket.
-      // We include a timestamp to bypass caching issues in the browser.
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${userId}.${fileExt}?t=${new Date().getTime()}`;
+    // 1. Define the path for the file in the storage bucket.
+    // We include a timestamp to bypass caching issues in the browser.
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${userId}.${fileExt}?t=${new Date().getTime()}`;
 
-      // 2. Upload the file to the 'avatars' bucket.
-      // `upsert: true` will overwrite the file if it already exists.
-      const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: true,
-          });
+    // 2. Upload the file to the 'avatars' bucket.
+    // `upsert: true` will overwrite the file if it already exists.
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
 
-      if (uploadError) {
-          throw uploadError;
-      }
+    if (uploadError) {
+      throw uploadError;
+    }
 
-      // 3. Get the public URL of the uploaded file.
-      const { data: urlData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(filePath);
+    // 3. Get the public URL of the uploaded file.
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
 
-      if (!urlData.publicUrl) {
-          throw new Error('Could not get public URL for avatar.');
-      }
-      
-      const publicUrl = urlData.publicUrl;
+    if (!urlData.publicUrl) {
+      throw new Error('Could not get public URL for avatar.');
+    }
 
-      // 4. Update the 'avatar_url' in the user's profile table.
-      const { error: dbError } = await supabase
-          .from('profiles')
-          .update({ avatar_url: publicUrl })
-          .eq('id', userId);
+    const publicUrl = urlData.publicUrl;
 
-      if (dbError) {
-          throw dbError;
-      }
+    // 4. Update the 'avatar_url' in the user's profile table.
+    const { error: dbError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', userId);
 
-      return publicUrl;
+    if (dbError) {
+      throw dbError;
+    }
+
+    return publicUrl;
   } catch (error) {
-      console.error('Error in avatar upload process:', error);
-      // Here you could add more specific error handling or logging
-      return null;
+    console.error('Error in avatar upload process:', error);
+    // Here you could add more specific error handling or logging
+    return null;
   }
 };
 

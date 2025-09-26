@@ -672,7 +672,7 @@ function LegalSection() {
             { label: "Refund Policy", to: "/refund-policy" },
             { label: "Data Processing Addendum", to: "/dpa" },
           ].map((l) => (
-            <li key={l.to} className="flex items-center justify-between bg-[#ECEBE5]/5 px-4 py-3 text-[#fff]">
+            <li key={l.to} className="flex items-center justify-between bg-black/10 px-4 py-3 text-[#fff]">
               <span>{l.label}</span>
               <a className="text-sm underline decoration-[#ECEBE5]/40 hover:decoration-[#ECEBE5]" href={l.to}>View</a>
             </li>

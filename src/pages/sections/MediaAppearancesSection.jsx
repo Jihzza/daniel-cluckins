@@ -24,7 +24,7 @@ export default function MediaAppearancesSection() {
 
 
     return (
-        <section className="w-full mx-auto py-6 text-center md:px-6">
+        <section id="media-appearances-section" className="w-full mx-auto py-6 text-center md:px-6">
             <SectionTextBlack title={t('mediaAppearances.title')}>
                 {t('mediaAppearances.subtitle')}
             </SectionTextBlack>

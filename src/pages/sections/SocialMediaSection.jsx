@@ -44,7 +44,7 @@ export default function SocialMediaSection() {
     }));
 
     return (
-        <section className="max-w-4xl mx-auto py-8 text-center">
+        <section id="social-media-section" className="max-w-4xl mx-auto py-8 text-center">
 
             {/* 4. SECTION TITLE */}
             {/* The title is now fetched from the translation file. */}

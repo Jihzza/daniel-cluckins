@@ -14,9 +14,9 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
 
   // If already logged in -> bounce to /profile
-  useEffect(() => {
-    if (isAuthenticated) navigate('/profile');
-  }, [isAuthenticated, navigate]);
+   useEffect(() => {
+    if (!loading && isAuthenticated) navigate('/profile')
+    }, [loading, isAuthenticated])
 
   // Handle form submit
   const handleLogin = async ({ email, password, rememberMe }) => {
