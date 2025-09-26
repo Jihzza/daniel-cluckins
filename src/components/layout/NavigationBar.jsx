@@ -321,7 +321,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
       <ChatPreviewToast
         open={showPopup && location.pathname !== '/chat'}
         text={welcomePreview}
-        bottomOffsetPx={navBarHeight + 8}
+        bottomOffsetPx={navBarHeight + 60}
         onClick={() => navigate('/chat')}
         />
     </nav>
