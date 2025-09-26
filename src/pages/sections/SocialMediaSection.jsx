@@ -12,57 +12,69 @@ import TiktokIcon from '../../assets/icons/Tiktok.svg';
 import XIcon from '../../assets/icons/X Twitter.svg';
 
 // --- I18N IMPORT ---
-import { useTranslation } from 'react-i18next'; // 1. Import the hook
+import { useTranslation } from 'react-i18next';
 
 // --- DATA DEFINITION ---
-// This static data will be merged with the translated text below.
 const staticSocialData = [
-    {
-        href: 'https://www.instagram.com/danieldagalow/',
-        iconSrc: InstagramIcon,
-    },
-    {
-        href: 'https://www.tiktok.com/@galo_portugues?_t=ZG-8xcWPWjcJKS&_r=1',
-        iconSrc: TiktokIcon,
-    },
-    {
-        href: 'https://www.x.com/galo_portugues?t=C0UzWJg6Vt7vUpDDMdQslw&s=08',
-        iconSrc: XIcon,
-    },
+  {
+    href: 'https://www.instagram.com/danieldagalow/',
+    iconSrc: InstagramIcon,
+    key: 'instagram',
+  },
+  {
+    href: 'https://www.tiktok.com/@galo_portugues?_t=ZG-8xcWPWjcJKS&_r=1',
+    iconSrc: TiktokIcon,
+    key: 'tiktok',
+  },
+  {
+    href: 'https://www.x.com/galo_portugues?t=C0UzWJg6Vt7vUpDDMdQslw&s=08',
+    iconSrc: XIcon,
+    key: 'x',
+  },
 ];
 
 export default function SocialMediaSection() {
-    const { t } = useTranslation(); // 2. Initialize the hook
+  const { t } = useTranslation();
 
-    // 3. Load translated alt text and merge it with the static icon data.
-    // This pattern keeps static assets (like URLs and icons) in code while
-    // allowing text content to be managed by the i18n system.
-    const translatedLinks = t('socialMedia.links', { returnObjects: true });
-    const socialLinks = staticSocialData.map((social, index) => ({
-        ...social,
-        altText: translatedLinks[index]?.altText || `Social media link ${index + 1}`
-    }));
+  // Expecting translation like:
+  // socialMedia.links = [
+  //   { altText: "...", label: "Instagram" },
+  //   { altText: "...", label: "TikTok" },
+  //   { altText: "...", label: "X (Twitter)" }
+  // ]
+  const translatedLinks = t('socialMedia.links', { returnObjects: true }) || [];
 
-    return (
-        <section id="social-media-section" className="max-w-4xl mx-auto py-8 text-center">
+  const socialLinks = staticSocialData.map((social, index) => {
+    const i18n = translatedLinks[index] || {};
+    // Fallback label if i18n label not provided
+    const fallbackLabel =
+      social.key === 'instagram' ? 'Instagram' :
+      social.key === 'tiktok' ? 'TikTok' :
+      social.key === 'x' ? 'X (Twitter)' :
+      'Social';
+    return {
+      ...social,
+      altText: i18n.altText || `${fallbackLabel} link`,
+      label: i18n.label || fallbackLabel,
+    };
+  });
 
-            {/* 4. SECTION TITLE */}
-            {/* The title is now fetched from the translation file. */}
-            <SectionTextBlack title={t('socialMedia.title')} />
+  return (
+    <section className="max-w-4xl mx-auto py-8 text-center">
+      <SectionTextBlack title={t('socialMedia.title')} />
 
-            <div className="flex justify-center items-center gap-6">
-                {/* 5. We map over the newly merged `socialLinks` array. */}
-                {socialLinks.map((social, index) => (
-                    <SocialMediaIcon
-                        key={index}
-                        href={social.href}
-                        iconSrc={social.iconSrc}
-                        // The altText is now dynamic and translated.
-                        altText={social.altText}
-                    />
-                ))}
-            </div>
-
-        </section>
-    );
+      {/* Linktree-style vertical stack */}
+      <div className="mx-auto w-full max-w-md flex flex-col items-stretch gap-4">
+        {socialLinks.map((social, index) => (
+          <SocialMediaIcon
+            key={index}
+            href={social.href}
+            iconSrc={social.iconSrc}
+            altText={social.altText}
+            label={social.label}
+          />
+        ))}
+      </div>
+    </section>
+  );
 }
