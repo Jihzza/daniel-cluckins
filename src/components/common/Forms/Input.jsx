@@ -43,7 +43,7 @@ const Input = React.forwardRef(({
     return (
         <input
             ref={ref}
-            className={`w-full px-3 py-2 mt-2 rounded-xl text-white placeholder-gray-400 shadow-lg focus:outline-none bg-[#001B3A] backdrop-blur-md border border-white/20 justify-center items-center flex ${className}`}
+            className={`w-full px-3 py-2 mt-2 rounded-2xl text-white placeholder-gray-400 shadow-lg focus:outline-none bg-[#001B3A] backdrop-blur-md border border-white/20 justify-center items-center flex ${className}`}
             {...props}
         />
     );

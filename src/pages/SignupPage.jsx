@@ -1,7 +1,5 @@
 // src/pages/SignupPage.jsx
 
-// Handles local loading + error, calls Supabase sign-up service, and redirects to /profile on success.
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signUpNewUser, signInWithGoogle } from '../services/authService';
@@ -9,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import SignUp from '../components/auth/Signup';
 import EmailVerificationModal from '../components/auth/EmailVerificationModal';
 import SectionTextWhite from '../components/common/FormsTitle';
+import { useTranslation } from 'react-i18next';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -16,13 +15,14 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [needVerification, setNeedVerification] = useState(false);
+  const { t } = useTranslation();
 
   // Redirect away if user is already logged in
   useEffect(() => {
     if (isAuthenticated) navigate('/profile');
   }, [isAuthenticated, navigate]);
 
-  // Handler receives { email, password, confirm } from the child form
+  // Handler receives { email, password } from the child form
   const handleSignup = async ({ email, password }) => {
     setIsLoading(true);
     setError(null);
@@ -37,7 +37,7 @@ export default function SignupPage() {
       }
       navigate('/profile');
     } catch (err) {
-      setError(err.message || 'Unexpected error');
+      setError(err.message || t('auth.signup.errors.unexpected'));
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +52,7 @@ export default function SignupPage() {
       if (error) throw error;
       // Google sign-in will redirect, so no need to navigate manually
     } catch (err) {
-      setError(err.message || 'Google sign-in failed');
+      setError(err.message || t('auth.signup.errors.googleFailed'));
       setIsLoading(false);
     }
   };
@@ -67,7 +67,7 @@ export default function SignupPage() {
       </div>
 
       <div className="mx-auto flex h-full max-w-7xl flex-col items-center justify-center p-6">
-        <SectionTextWhite title="Create an account" />
+        <SectionTextWhite title={t('auth.signup.pageTitle')} />
 
         <div className="mt-8 w-full max-w-md">
           <div className="rounded-2xl bg-black/10  p-8 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl">
@@ -101,7 +101,7 @@ export default function SignupPage() {
 
           {/* Tiny reassurance footer */}
           <p className="mt-6 text-center text-xs text-white">
-            We’ll email you a verification link if required.
+            {t('auth.signup.verificationHint')}
           </p>
         </div>
       </div>

@@ -6,17 +6,19 @@ import { sendPasswordResetEmail } from '../services/authService';
 import { Link } from 'react-router-dom';
 import SectionTextWhite from '../components/common/FormsTitle';
 import Button from '../components/ui/Button';
+import { useTranslation } from 'react-i18next';
 
 export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
+  const { t } = useTranslation();
 
   const handleForgot = async ({ email }) => {
     setLoading(true);
     setError(null);
     const { error } = await sendPasswordResetEmail(email);
-    if (error) setError(error.message);
+    if (error) setError(error.message || t('auth.forgot.errors.unexpected'));
     else setSent(true);
     setLoading(false);
   };
@@ -31,15 +33,14 @@ export default function ForgotPasswordPage() {
       </div>
 
       <div className="mx-auto flex h-full max-w-7xl flex-col items-center justify-center px-6 py-12">
-        <SectionTextWhite title={sent ? 'Check your inbox' : 'Reset your password'} />
+        <SectionTextWhite title={sent ? t('auth.forgot.pageTitleSent') : t('auth.forgot.pageTitleReset')} />
 
         <div className="mt-8 w-full max-w-md">
           <div className="rounded-2xl bg-black/10  p-8 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl">
             {sent ? (
               <div role="status" aria-live="polite" className="space-y-4 text-center">
                 <p className="text-sm text-black/80">
-                  If an account exists for that address, we’ve sent a password reset email. Please
-                  check your inbox (and spam).
+                  {t('auth.forgot.sentDescription')}
                 </p>
                 <div className="flex items-center justify-center gap-3">
                   <Button
@@ -47,10 +48,10 @@ export default function ForgotPasswordPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Open Gmail
+                    {t('auth.forgot.openGmail')}
                   </Button>
                   <Link to="/login" className="text-sm font-medium text-indigo-600 underline">
-                    Back to login
+                    {t('auth.forgot.backToLogin')}
                   </Link>
                 </div>
               </div>
@@ -75,8 +76,7 @@ export default function ForgotPasswordPage() {
           </div>
 
           <p className="mt-6 text-center text-xs text-white">
-            For security, we don’t confirm whether an email is registered. You’ll only receive mail
-            if there’s an account for that address.
+            {t('auth.forgot.securityNote')}
           </p>
         </div>
       </div>

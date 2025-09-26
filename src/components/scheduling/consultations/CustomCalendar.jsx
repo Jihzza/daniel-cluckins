@@ -20,6 +20,8 @@ import {
   startOfWeek,
 } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";   // ⬅️ add
+const { t } = useTranslation();
 
 export default function CustomCalendar({
   selectedDate,
@@ -251,7 +253,7 @@ export default function CustomCalendar({
             type="button"
             onClick={goToPrevMonth}
             className="px-2 py-1"
-            aria-label="Previous month"
+            aria-label={t('calendar.prevMonth')}    // ⬅️ i18n
           >
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -268,7 +270,7 @@ export default function CustomCalendar({
             type="button"
             onClick={goToNextMonth}
             className="px-2 py-1"
-            aria-label="Next month"
+            aria-label={t('calendar.nextMonth')}    // ⬅️ i18n
           >
             <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>

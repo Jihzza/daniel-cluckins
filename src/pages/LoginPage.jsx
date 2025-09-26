@@ -6,29 +6,30 @@ import Login from '../components/auth/Login';
 import { useAuth } from '../contexts/AuthContext';
 import { signInWithPassword, signInWithGoogle } from '../services/authService';
 import SectionTextWhite from '../components/common/FormsTitle';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { t } = useTranslation();
 
   // If already logged in -> bounce to /profile
-   useEffect(() => {
-    if (!loading && isAuthenticated) navigate('/profile')
-    }, [loading, isAuthenticated])
+  useEffect(() => {
+    if (!loading && isAuthenticated) navigate('/profile');
+  }, [loading, isAuthenticated, navigate]);
 
   // Handle form submit
-  const handleLogin = async ({ email, password, rememberMe }) => {
+  const handleLogin = async ({ email, password /*, rememberMe */ }) => {
     setLoading(true);
     setError(null);
     try {
-      // If you later wire "remember me", you can pass it down to your auth layer / cookie strategy.
       const { error } = await signInWithPassword(email, password);
       if (error) throw error;
       navigate('/profile'); // fast UX; context listener will also fire
     } catch (err) {
-      setError(err.message || 'An unexpected error occurred.');
+      setError(err.message || t('auth.login.errors.unexpected'));
     } finally {
       setLoading(false);
     }
@@ -41,9 +42,9 @@ export default function LoginPage() {
     try {
       const { error } = await signInWithGoogle();
       if (error) throw error;
-      // Google sign-in will redirect, so no need to navigate manually
+      // Google sign-in will redirect
     } catch (err) {
-      setError(err.message || 'Google sign-in failed');
+      setError(err.message || t('auth.login.errors.googleFailed'));
       setLoading(false);
     }
   };
@@ -58,7 +59,7 @@ export default function LoginPage() {
       </div>
 
       <div className="mx-auto flex h-full max-w-7xl flex-col items-center justify-start p-6">
-        <SectionTextWhite title="Log in to your account" />
+        <SectionTextWhite title={t('auth.login.pageTitle')} />
 
         <div className="mt-8 w-full max-w-md">
           <div className="rounded-2xl bg-black/10  p-8 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl">

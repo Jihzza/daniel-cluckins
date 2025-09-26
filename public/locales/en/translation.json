@@ -194,6 +194,22 @@
       "onlyfans": "Grow on OnlyFans - 90€/h",
       "ai": "Leverage AI & Tech - 90€/h",
       "life": "Life Advice - 90€/h"
+    },
+    "box": {
+      "title": "Consultations",
+      "empty": "No consultations yet",
+      "more_one": "+{{count}} more consultation",
+      "more_other": "+{{count}} more consultations",
+      "status": {
+        "confirmed": "Confirmed"
+      },
+      "duration": {
+        "minutes_one": "{{count}} min",
+        "minutes_other": "{{count}} min",
+        "hoursOnly_one": "{{count}}h",
+        "hoursOnly_other": "{{count}}h",
+        "hoursAndMinutes": "{{hours}}h {{minutes}}min"
+      }
     }
   },
   "coaching": {
@@ -299,7 +315,20 @@
         "title": "Galow - Success Club",
         "description": "A social club with real world activities and digital software to help successful people connect and achieve their dreams."
       }
-    ]
+    ],
+    "box": {
+      "title": "Pitch Deck Requests",
+      "untitled": "Untitled Request",
+      "empty": "No pitch deck requests yet",
+      "more_one": "+{{count}} more request",
+      "more_other": "+{{count}} more requests",
+      "status": {
+        "submitted": "Submitted",
+        "in_review": "In review",
+        "feedback_sent": "Feedback sent",
+        "archived": "Archived"
+      }
+    }
   },
   "testimonials": {
     "title": "Success Stories",
@@ -350,20 +379,52 @@
     "title": "Create Your Account",
     "subtitle": "Join our community to unlock exclusive content, save your progress, and connect with others.",
     "form": {
+      "nameLabel": "Name",
+      "namePlaceholder": "Your name",
       "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
       "passwordLabel": "Password",
-      "confirmPasswordLabel": "Confirm Password",
-      "createAccountButton": "Create Account",
+      "passwordPlaceholder": "••••••••",
+      "confirmPasswordLabel": "Confirm password",
       "orSeparator": "or",
       "loginPrompt": "Already have an account?",
       "loginLink": "Log in",
-      "showPassword": "Show password",
-      "googleButton": "| Continue with Google",
       "validation": {
         "emailRequired": "Email is required",
         "passwordRequired": "Password is required",
-        "passwordMinLength": "Minimum length is 6",
+        "passwordMinLength": "Password must be at least 6 characters",
         "passwordsNoMatch": "Passwords do not match"
+      }
+    },
+    "cta": "Create your account"
+  },
+  "login": {
+    "form": {
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "submit": "Log in",
+      "orSeparator": "or",
+      "signupPrompt": "Don't have an account?",
+      "signupLink": "Create one",
+      "validation": {
+        "emailRequired": "Email is required",
+        "passwordRequired": "Password is required"
+      }
+    }
+  },
+  "forgot": {
+    "form": {
+      "emailLabel": "Enter your account email",
+      "emailPlaceholder": "account@email.com",
+      "submit": "Send reset link",
+      "backTo": "Go back to",
+      "loginLink": "Log in",
+      "validation": {
+        "emailRequired": "Email is required"
       }
     }
   },
@@ -390,8 +451,10 @@
     "durationSelectorTitle": "Select Duration",
     "timeSelectorTitle": "Select Available Time",
     "appointmentSummary": {
-      "from": "from",
-      "to": "to"
+      "from": "From",
+      "to": "To",
+      "duration": "Duration",
+      "minutesShort": "min"
     },
     "durationOptions": [
       {
@@ -569,10 +632,18 @@
   },
   "sidebar": {
     "mainPages": [
-      { "label": "Home" },
-      { "label": "Profile" },
-      { "label": "Chat" },
-      { "label": "Calendar" }
+      {
+        "label": "Home"
+      },
+      {
+        "label": "Profile"
+      },
+      {
+        "label": "Chat"
+      },
+      {
+        "label": "Calendar"
+      }
     ],
     "explore": "Explore",
     "exploreLinks": [
@@ -629,58 +700,200 @@
     }
   },
   "accountSettings": {
-    "pageTitle": "Account & Settings",
-    "updateEmail": {
-      "title": "Change Email",
-      "placeholder": "New Email Address",
-      "button": "Update Email",
-      "successMessage": "Confirmation email sent to both old and new addresses. Please verify to complete the change.",
-      "errorMessage": "Error: {{message}}"
-    },
-    "updatePassword": {
-      "title": "Change Password",
-      "placeholder": "New Password",
-      "button": "Update Password",
-      "successMessage": "Password updated successfully."
-    },
-    "privacy": {
-      "title": "Privacy & Data",
-      "analytics": {
-        "label": "Usage Analytics",
-        "description": "Allow us to collect anonymous usage data to improve our services."
+    "page": {
+      "title": "Settings",
+      "sidebarAria": "Account settings sections",
+      "tabsAria": "Account settings tabs",
+      "nav": {
+        "profile": "Profile",
+        "security": "Security",
+        "billing": "Billing & Payments",
+        "notifications": "Notifications",
+        "privacy": "Privacy & Data",
+        "connections": "Connected Apps",
+        "devices": "Sessions & Devices",
+        "locale": "Language & Accessibility",
+        "legal": "Legal",
+        "danger": "Danger Zone"
       },
-      "retention": {
-        "label": "Data Retention",
-        "description": "Choose how long we keep your consultation chat history.",
-        "options": {
-          "1month": "1 Month",
-          "3months": "3 Months",
-          "6months": "6 Months",
-          "1year": "1 Year",
-          "forever": "Indefinitely"
+      "common": {
+        "saveChanges": "Save changes",
+        "savePreferences": "Save preferences",
+        "saved": "Saved"
+      },
+      "profile": {
+        "title": "Public profile",
+        "desc": "Control how your profile appears to others.",
+        "name": "Name",
+        "username": "Username",
+        "website": "Website",
+        "saveProfile": "Save profile",
+        "exampleName": "Your Name"
+      },
+      "contact": {
+        "title": "Contact & account",
+        "desc": "Email and phone are kept private.",
+        "email": "Email",
+        "phone": "Phone (for receipts / 2FA)",
+        "timezone": "Timezone",
+        "sendVerification": "Send verification email"
+      },
+      "security": {
+        "passwordTitle": "Password",
+        "passwordDesc": "Use a strong password. We support passphrases.",
+        "newPassword": "New password",
+        "updatePasswordBtn": "Update password",
+        "passwordUpdated": "Password updated.",
+        "twofaTitle": "Two-factor authentication",
+        "twofaDesc": "Add an extra layer of security using an authenticator app.",
+        "twofaEnabledNote": "2FA is enabled. Save your backup codes and keep them safe.",
+        "downloadBackupCodes": "Download backup codes",
+        "regenerate": "Regenerate",
+        "protectTitle": "Protect your account",
+        "protectSubtitle": "Enable 2FA to help prevent account takeovers.",
+        "appPasswordsTitle": "App passwords",
+        "appPasswordsDesc": "Generate app-specific passwords for legacy clients.",
+        "noAppPasswords": "No app passwords",
+        "noAppPasswordsSubtitle": "Create one if you need to connect older clients.",
+        "generate": "Generate"
+      },
+      "billing": {
+        "title": "Billing & Payments",
+        "defaultUpdated": "Default payment method updated.",
+        "removeConfirm": "Remove this payment method?",
+        "removed": "Removed",
+        "default": "Default",
+        "makeDefault": "Make default",
+        "remove": "Remove",
+        "exp": "Exp {{exp}}"
+      },
+      "subscription": {
+        "title": "Subscription",
+        "desc": "Manage your plan, invoices, and payment details.",
+        "status": "Status",
+        "renewsOn": "Renews on {{date}}",
+        "openPortal": "Open customer portal",
+        "changePlan": "Change plan"
+      },
+      "paymentMethods": {
+        "title": "Payment methods",
+        "desc": "Add, remove, or set a default card.",
+        "emptyTitle": "No payment methods",
+        "emptySubtitle": "Add a card to start your subscription.",
+        "add": "Add payment method"
+      },
+      "invoices": {
+        "title": "Invoices & receipts",
+        "empty": "No invoices yet",
+        "download": "Download",
+        "cols": {
+          "number": "Number",
+          "date": "Date",
+          "amount": "Amount",
+          "status": "Status",
+          "action": "Action"
+        },
+        "status": {
+          "paid": "Paid",
+          "open": "Open"
         }
       },
-      "download": {
-        "title": "Download Your Data",
-        "description": "Request a copy of all your personal data.",
-        "button": "Request Data",
-        "alert": "Data request sent!"
+      "notifications": {
+        "title": "Email notifications",
+        "desc": "Choose what we send you by email.",
+        "product": "Product updates",
+        "billing": "Billing & receipts",
+        "security": "Security alerts",
+        "marketing": "Marketing & newsletter",
+        "digest": "Summary digest",
+        "digestOff": "Off",
+        "digestDaily": "Daily",
+        "digestWeekly": "Weekly",
+        "digestMonthly": "Monthly"
       },
-      "saveButton": "Save Privacy Settings",
-      "saveSuccess": "Privacy settings saved successfully!"
+      "privacy": {
+        "title": "Privacy controls",
+        "desc": "Control analytics and personalized experiences.",
+        "analytics": "Allow anonymous analytics",
+        "analyticsDesc": "We use usage analytics to improve the product.",
+        "personalized": "Personalized content",
+        "personalizedDesc": "Tailor content based on your activity.",
+        "retention": "Chat & data retention",
+        "retention30d": "30 days",
+        "retention3m": "3 months",
+        "retention6m": "6 months",
+        "retention12m": "12 months",
+        "retentionForever": "Keep until deleted",
+        "savePrivacy": "Save privacy settings",
+        "exportOk": "Export started / ready.",
+        "exportFail": "Failed"
+      },
+      "data": {
+        "title": "Your data",
+        "desc": "Export or delete your data at any time.",
+        "export": "Export my data",
+        "requestReport": "Request data report"
+      },
+      "connections": {
+        "title": "Connected accounts",
+        "desc": "Link or unlink social logins.",
+        "connect": "Connect",
+        "disconnect": "Disconnect"
+      },
+      "devices": {
+        "title": "Active sessions",
+        "desc": "Devices with access to your account.",
+        "empty": "No active sessions",
+        "thisDevice": "This device",
+        "revoke": "Revoke",
+        "historyTitle": "Login history",
+        "historyDesc": "Recent security events"
+      },
+      "locale": {
+        "title": "Language & region",
+        "language": "Language"
+      },
+      "accessibility": {
+        "title": "Accessibility & appearance",
+        "theme": "Theme",
+        "themeLight": "Light",
+        "themeDark": "Dark",
+        "themeSystem": "System",
+        "fontSize": "Font size",
+        "fontSmall": "Small",
+        "fontDefault": "Default",
+        "fontLarge": "Large",
+        "reduceMotion": "Reduce motion"
+      },
+      "legal": {
+        "title": "Legal",
+        "desc": "Our policies and agreements.",
+        "privacyPolicy": "Privacy Policy",
+        "termsOfService": "Terms of Service",
+        "refundPolicy": "Refund Policy",
+        "dpa": "Data Processing Addendum"
+      },
+      "danger": {
+        "title": "Danger zone",
+        "desc": "Delete your account and all associated data. This action is irreversible.",
+        "note": "All active subscriptions will be cancelled. Invoices remain for tax compliance.",
+        "deleteBtn": "Delete account",
+        "confirmBtn": "Click to confirm",
+        "deletedRedirect": "Account deleted. Redirecting to sign up…"
+      }
     },
-    "legal": {
-      "title": "Information",
-      "privacyPolicy": "Privacy Policy",
-      "termsOfService": "Terms of Service"
-    },
-    "deleteAccount": {
-      "title": "Danger Zone",
-      "description": "Deleting your account will permanently remove all your data, including appointments, subscriptions, and history. This cannot be undone.",
-      "button": "Delete My Account",
-      "confirm": "Are you sure you want to delete your account? This action is irreversible.",
-      "error": "Failed to delete account: {{message}}",
-      "success": "Account deleted successfully."
+    "box": {
+      "title": "$t(accountSettings.pageTitle)",
+      "email": {
+        "label": "Email"
+      },
+      "created": {
+        "label": "Account Created"
+      },
+      "settings": {
+        "label": "Settings",
+        "description": "Manage your account preferences"
+      }
     }
   },
   "privacyPolicy": {
@@ -809,10 +1022,13 @@
     "pageSubtitle": "Pick a date to filter your consultations.",
     "loading": "Loading your appointments...",
     "error": "Failed to load appointments. Please try again.",
-    "noAppointments": "No appointments to show.",
+    "consultationsTitle": "Upcoming consultations",
+    "noAppointments": "No appointments scheduled",
     "listTitleForDate": "Appointments for {{date}}",
     "listTitleAll": "All Appointments",
-    "showAllButton": "Show All"
+    "showAllButton": "Show All",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
   },
   "chatbot": {
     "header": {
@@ -832,6 +1048,29 @@
       "buttonAria": "Send message",
       "buttonAriaLoggedOut": "Please log in to chat",
       "helperTextLoggedOut": "You need to be logged in to use the chat"
+    },
+    "page": {
+      "header": {
+        "historyTitle": "Chat history",
+        "historyAria": "Open chat history",
+        "newTitle": "New conversation",
+        "newAria": "Start a new conversation"
+      },
+      "inputPlaceholder": "Ask me something!",
+      "sendAria": "Send message",
+      "sendTitle": "Send",
+      "typing": "Typing...",
+      "messages": {
+        "welcomeFallback": "👋 Welcome! I'm here to help you with Daniel's coaching services. What can I assist you with today?",
+        "paymentSuccessAppointment": "🎉 Payment successful! Your appointment has been confirmed. You will receive a confirmation email shortly.",
+        "paymentSuccessSubscription": "🎉 Payment successful! Your {{plan}} coaching subscription is now active. Welcome to the program!",
+        "paymentCancelled": "Payment was cancelled. No charges were made. Feel free to try again anytime!",
+        "notConfigured": "I'm currently not configured to handle questions. Please check that the OpenAI API key is set in your environment variables (VITE_OPENAI_API_KEY).",
+        "processingError": "I'm having trouble processing your request right now. Please try again in a moment.",
+        "quotaError": "I've reached my usage limit for today. Please try again later or contact support.",
+        "apiKeyError": "There's a configuration issue with my AI service. Please contact support.",
+        "networkError": "Network error. Please try again."
+      }
     }
   },
   "directMessages": {
@@ -954,6 +1193,21 @@
       "started": "Started",
       "planFallback": "Subscription",
       "statusUnknown": "unknown"
+    },
+    "box": {
+      "title": "Subscriptions",
+      "fallbackPlan": "Subscription",
+      "empty": "No active subscriptions",
+      "more_one": "+{{count}} more subscription",
+      "more_other": "+{{count}} more subscriptions",
+      "status": {
+        "active": "Active",
+        "canceled": "Canceled",
+        "past_due": "Past due",
+        "trialing": "Trialing",
+        "incomplete": "Incomplete",
+        "paused": "Paused"
+      }
     }
   },
   "pitchDeckRequests": {
@@ -982,9 +1236,55 @@
     "error": "Failed to load conversations. Please try again.",
     "card": {
       "conversationFrom": "Conversation from {{date}}"
+    },
+    "box": {
+      "title": "Chatbot History",
+      "itemTooltip": "Conversation preview",
+      "untitled": "Conversation",
+      "message_one": "{{count}} message",
+      "message_other": "{{count}} messages",
+      "empty": "No conversations yet",
+      "moreConversations": "+{{count}} more conversations"
+    }
+  },
+  "finances": {
+    "box": {
+      "title": "Finances",
+      "consultationsLifetime": "Consultations (Lifetime)",
+      "coachingMonthly": "Coaching (Monthly)",
+      "pitchDecksFree": "Pitch Decks (Free)"
+    }
+  },
+  "auth": {
+    "login": {
+      "pageTitle": "Log in to your account",
+      "errors": {
+        "unexpected": "An unexpected error occurred.",
+        "googleFailed": "Google sign-in failed"
+      }
+    },
+    "signup": {
+      "pageTitle": "Create an account",
+      "errors": {
+        "unexpected": "An unexpected error occurred.",
+        "googleFailed": "Google sign-in failed"
+      },
+      "verificationHint": "We’ll email you a verification link if required."
+    },
+    "forgot": {
+      "pageTitleReset": "Reset your password",
+      "pageTitleSent": "Check your inbox",
+      "sentDescription": "If an account exists for that address, we’ve sent a password reset email. Please check your inbox (and spam).",
+      "openGmail": "Open Gmail",
+      "backToLogin": "Back to login",
+      "securityNote": "For security, we don’t confirm whether an email is registered. You’ll only receive mail if there’s an account for that address.",
+      "errors": {
+        "unexpected": "An unexpected error occurred."
+      }
     }
   },
   "navigation": {
+    "primary": "Primary navigation",
     "home": "Home",
     "calendar": "Calendar",
     "chat": "Chat",
@@ -998,5 +1298,18 @@
       "faq": "FAQ",
       "bugReport": "Bug Report"
     }
+  },
+  "common": {
+    "notAvailable": "N/A",
+    "dateShort": "{{val, datetime}}",
+    "untitled": "Untitled",
+    "open": "Open",
+    "viewDetails": "View details",
+    "dateTimeFull": "{{val, datetime}}",
+    "enable": "Enable",
+    "disable": "Disable",
+    "view": "View",
+    "comingSoon": "Coming soon",
+    "saved": "Saved"
   }
 }

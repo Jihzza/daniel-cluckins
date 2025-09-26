@@ -238,7 +238,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
       className={BAR_CLASS}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       role="navigation"
-      aria-label="Primary"
+      aria-label={t('navigation.primary')}
     >
       <div className={INNER_CLASS}>
         {navItems.map((item, idx) => {
@@ -261,9 +261,8 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
               key={`${item.label}-${idx}`}
               onClick={() => handleItemClick(item)}
               className={BUTTON_CLASS}
-              aria-label={item.label}
+              aria-label={item.label}               // already localized
               aria-current={reallyActive ? "page" : undefined}
-              // Only expose pressed state for ghost when no real active exists
               aria-pressed={!hasRealActive && !reallyActive && ghostActive ? true : undefined}
               type="button"
             >

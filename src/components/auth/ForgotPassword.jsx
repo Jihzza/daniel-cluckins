@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import Input from '../common/Forms/Input';
 import FormButton from '../common/Forms/FormButton';
+import { useTranslation } from 'react-i18next';
 
 // Pure UI – parent passes onSubmit + isLoading
 export default function ForgotPassword({
@@ -11,18 +12,15 @@ export default function ForgotPassword({
   isLoading,
   containerClassName = 'space-y-6',
 }) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm();
+  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { t } = useTranslation();
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={containerClassName} noValidate>
       {/* Email */}
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-white md:text-base">
-          Enter your account email
+          {t('forgot.form.emailLabel')}
         </label>
         <div className="mt-1">
           <Input
@@ -30,10 +28,10 @@ export default function ForgotPassword({
             type="email"
             autoComplete="email"
             inputMode="email"
-            placeholder="account@email.com"
+            placeholder={t('forgot.form.emailPlaceholder')}
             aria-invalid={errors.email ? 'true' : 'false'}
             aria-describedby={errors.email ? 'email-error' : undefined}
-            {...register('email', { required: 'Email is required' })}
+            {...register('email', { required: t('forgot.form.validation.emailRequired') })}
           />
           {errors.email && (
             <p id="email-error" className="mt-2 text-sm text-red-600" aria-live="polite">
@@ -45,14 +43,14 @@ export default function ForgotPassword({
 
       {/* Submit */}
       <FormButton type="submit" isLoading={isLoading} disabled={isLoading} fullWidth>
-        Send reset link
+        {t('forgot.form.submit')}
       </FormButton>
 
       {/* Back to login */}
       <p className="text-center text-sm text-white/80">
-        Go back to{' '}
+        {t('forgot.form.backTo')}{' '}
         <Link to="/login" className="font-semibold text-[#bfa200] hover:text-[#bfa200]/80 underline">
-          Log in
+          {t('forgot.form.loginLink')}
         </Link>
       </p>
     </form>

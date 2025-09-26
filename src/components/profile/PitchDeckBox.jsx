@@ -1,29 +1,33 @@
 // src/components/profile/PitchDeckBox.jsx
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next'; // if using next-i18next, import from 'next-i18next'
 import { DocumentTextIcon, ClockIcon } from '@heroicons/react/24/outline';
 import ProfileDashboardBox from './ProfileDashboardBox';
 
-/**
- * Pitch Deck Requests section box showing recent requests
- */
 const PitchDeckBox = ({ 
   requests = [], 
   to = '/profile/pitch-requests',
   maxDisplay = 2 
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return t('common.notAvailable');
+    const d = new Date(dateString);
+    if (Number.isNaN(d.getTime())) return t('common.notAvailable');
+
+    // Prefer i18next Intl-based formatter; fall back to toLocaleDateString
     try {
-      return new Date(dateString).toLocaleDateString('pt-PT', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+      return t('common.dateShort', {
+        val: d,
+        formatParams: {
+          val: { day: '2-digit', month: '2-digit', year: 'numeric' }
+        }
       });
-    } catch (error) {
-      return 'N/A';
+    } catch {
+      return d.toLocaleDateString(i18n.resolvedLanguage || i18n.language || undefined, {
+        day: '2-digit', month: '2-digit', year: 'numeric'
+      });
     }
   };
 
@@ -42,7 +46,7 @@ const PitchDeckBox = ({
 
   return (
     <ProfileDashboardBox 
-      title="Pitch Deck Requests" 
+      title={t('pitchDeck.box.title')}
       to={to}
       className="bg-black/10"
     >
@@ -54,7 +58,7 @@ const PitchDeckBox = ({
                 <DocumentTextIcon className="h-4 w-4 text-white/80" />
                 <div>
                   <span className="text-sm font-medium text-white/90 block">
-                    {request.company || 'Untitled Request'}
+                    {request.company || t('pitchDeck.box.untitled')}
                   </span>
                   <div className="flex items-center space-x-2 mt-1">
                     <ClockIcon className="h-3 w-3 text-white/60" />
@@ -64,22 +68,27 @@ const PitchDeckBox = ({
                   </div>
                 </div>
               </div>
+
               <span className={`text-xs font-medium ${getStatusColor(request.status)}`}>
-                {request.status || 'Submitted'}
+                {request?.status
+                  ? t(`pitchDeck.box.status.${request.status}`, { defaultValue: request.status })
+                  : t('pitchDeck.box.status.submitted')}
               </span>
             </div>
           ))
         ) : (
           <div className="text-center py-4">
             <DocumentTextIcon className="h-8 w-8 text-white/40 mx-auto mb-2" />
-            <p className="text-sm text-white/70">No pitch deck requests yet</p>
+            <p className="text-sm text-white/70">
+              {t('pitchDeck.box.empty')}
+            </p>
           </div>
         )}
-        
+
         {hasMore && (
           <div className="text-center pt-2">
             <span className="text-xs text-white/60">
-              +{requests.length - maxDisplay} more requests
+              {t('pitchDeck.box.more', { count: requests.length - maxDisplay })}
             </span>
           </div>
         )}
