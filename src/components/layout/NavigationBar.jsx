@@ -79,7 +79,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
       setHasPendingWelcome(true);
       setWelcomePreview(pending);
       setShowPopup(true);
-      // Auto-hide after 5 seconds if not consumed
+      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
       popupTimeoutRef.current = setTimeout(() => setShowPopup(false), 5000);
     }
 
@@ -109,7 +109,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
       window.removeEventListener('welcomeMessageConsumed', onConsumed);
       if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
     };
-  }, []);
+  }, [location.pathname]);
 
   const avatarSrc =
     user?.user_metadata?.avatar_url || user?.user_metadata?.picture || "";
@@ -299,12 +299,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
                     alt={item.label}
                     className="w-full h-full object-contain p-[1px] pointer-events-none select-none"
                   />
-                  {item.isChat && showPopup && location.pathname !== '/chat' && (
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 bg-black/80 text-white text-xs p-2 rounded-lg shadow-lg border border-white/20 pointer-events-none">
-                      <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-black/80" />
-                      {welcomePreview.substring(0, 50)}... {/* Truncate if too long */}
-                    </div>
-                  )}
+                  
                 </motion.div>
               )}
 

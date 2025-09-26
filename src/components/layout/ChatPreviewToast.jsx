@@ -33,7 +33,7 @@ export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx =
           exit={{ y: 96, opacity: 0 }}
           transition={{ type: "spring", stiffness: 480, damping: 36 }}
           className="fixed left-1/2 -translate-x-1/2 w-[90%] md:w-[520px] text-left 
-                     rounded-3xl border px-4 py-3 shadow-xl 
+                     rounded-2xl border px-4 py-3 shadow-xl 
                      backdrop-blur bg-[#002147] border-white/20 select-none"
           style={{
             bottom: `calc(${bottomOffsetPx}px + env(safe-area-inset-bottom))`,

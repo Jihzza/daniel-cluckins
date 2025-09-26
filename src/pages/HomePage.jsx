@@ -20,6 +20,7 @@ import ChatWithMeSection from './sections/ChatWithMeSection';
 import { useTranslation } from 'react-i18next';
 import { openaiService } from '../services/openaiService';
 import { emitWelcomePreview } from '../utils/welcomeEmitter';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function HomePage() {
     const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function HomePage() {
     const schedulingRef = useRef(null);
     const { t, i18n } = useTranslation();
     const scrollContainer = useContext(ScrollRootContext);
-
+    const { user } = useAuth();
     // Debug: log a sample translation on mount and language changes
     useEffect(() => {
         try {
@@ -104,11 +105,6 @@ export default function HomePage() {
         };
     }, [navigate]); // The dependency array ensures this runs only once.
 
-    // =================================================================
-    // THE ERROR WAS HERE: The useEffect hook was not closed.
-    // The `return` statement must be OUTSIDE the `useEffect` block.
-    // =================================================================
-
     // Scroll position tracking and restoration
     useEffect(() => {
         if (!scrollContainer?.current) return;
@@ -168,24 +164,32 @@ export default function HomePage() {
 
     useEffect(() => {
         let cancelled = false;
+
         (async () => {
             try {
-                // HomePage.jsx
-                const msg = await generateWelcomeForSession({
-                    sessionId,                    // from context
-                    user,                         // same user object ChatbotPage uses
-                    fetchHistory: getHistory,     // same DB history loader ChatbotPage uses
-                    systemPrompt: CHAT_SYSTEM,    // the exact same system prompt
-                    model: CHAT_MODEL,            // same model & temperature
-                    temperature: CHAT_TEMP,
-                    timezone: 'Europe/Madrid',    // or your app-wide TZ
-                });
-                emitWelcomePreview(msg);
+                const profile = user ? {
+                    full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+                    email: user.email || null,
+                    phone: user.user_metadata?.phone || null,
+                } : null;
 
-            } catch { }
+                let msg;
+                if (openaiService.isConfigured()) {
+                    msg = await openaiService.getWelcomeMessage(user?.id ?? null, profile);
+                } else {
+                    msg = "👋 Welcome! I'm here to help. What can I assist you with today?";
+                }
+
+                if (!cancelled && msg) {
+                    emitWelcomePreview(msg);
+                }
+            } catch (err) {
+                console.error('[HomePage] Failed to build welcome preview:', err);
+            }
         })();
+
         return () => { cancelled = true; };
-    }, []);
+    }, [user?.id]);
 
     return (
         <div
