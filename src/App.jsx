@@ -23,7 +23,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import SuccessPage from './pages/SuccessPage';
 import SchedulingFormPage from './pages/SchedulingFormPage';
 import ChatbotPage from './pages/ChatbotPage';
-
+import ChatbotHistoryPage from './pages/profile/ChatbotHistoryPage';
 function App() {
   return (
     <BrowserRouter>
@@ -72,7 +72,11 @@ function App() {
           />
           <Route
             path="/profile/chatbot-history"
-            element={<ProtectedRoute><div /> </ProtectedRoute>}
+            element={
+              <ProtectedRoute>
+                <ChatbotHistoryPage />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/calendar"
@@ -91,6 +95,7 @@ function App() {
             element={<ChatbotPage />}
           />
           <Route path="/chatbot" element={<Navigate to="/chat" replace />} />
+
         </Route>
       </Routes>
     </BrowserRouter>

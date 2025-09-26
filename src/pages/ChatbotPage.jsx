@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { openaiService } from '../services/openaiService';
 import { supabase } from '../lib/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FiClock, FiPlus, FiSend } from 'react-icons/fi';
 import Input from '../components/common/Forms/Input';
 
@@ -13,7 +13,13 @@ const SESSION_STORAGE_KEY = 'chatbot-session-id';
 export default function ChatbotPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [sessionId, setSessionId] = useState(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('session_id');
+    if (fromUrl) {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, fromUrl);
+      return fromUrl;
+    }
     const cached = sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (cached) return cached;
     const id = typeof crypto?.randomUUID === 'function'
@@ -22,6 +28,17 @@ export default function ChatbotPage() {
     sessionStorage.setItem(SESSION_STORAGE_KEY, id);
     return id;
   });
+
+
+  useEffect(() => {
+    const sid = searchParams.get('session_id');
+    if (sid && sid !== sessionId) {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, sid);
+      setSessionId(sid);
+      setMessages([]);
+      setHistoryLoaded(false);
+    }
+  }, [searchParams, sessionId]);
 
   const [messages, setMessages] = useState(() => []);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
@@ -66,6 +83,9 @@ export default function ChatbotPage() {
     setMessages([]);
     setHasShownWelcome(false);
 
+    navigate(`/chat?session_id=${encodeURIComponent(newId)}`, { replace: true });
+
+
     // OPTIONAL: strip payment params from the URL to avoid carrying banners into the fresh chat
     try {
       const url = new URL(window.location.href);
@@ -81,8 +101,8 @@ export default function ChatbotPage() {
 
   async function saveChatRow(role, content) {
     try {
-      const sid = sessionStorage.getItem(SESSION_STORAGE_KEY);
-      const userId = user?.id || null;
+      const sid = sessionId;
+      const userId = user?.id ||null;
       const { error } = await supabase
         .from('chatbot_conversations')
         .insert([{ session_id: sid, user_id: userId, role, content }])
@@ -97,7 +117,7 @@ export default function ChatbotPage() {
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const sid = sessionStorage.getItem(SESSION_STORAGE_KEY);
+        const sid = sessionId;
         if (!sid) return;
 
         let q = supabase
@@ -130,7 +150,7 @@ export default function ChatbotPage() {
     };
 
     loadHistory();
-  }, [user?.id]);
+  }, [user?.id, sessionId]);
 
   // Show welcome message when component mounts and user is authenticated
   useEffect(() => {
@@ -295,7 +315,7 @@ export default function ChatbotPage() {
           {/* Left: History icon -> navigate to history page */}
           <button
             type="button"
-            onClick={() => navigate('/chat/history')} // <-- change if needed
+            onClick={() => navigate('/profile/chatbot-history')} // <-- change if needed
             className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
             title="Chat history"
             aria-label="Open chat history"
