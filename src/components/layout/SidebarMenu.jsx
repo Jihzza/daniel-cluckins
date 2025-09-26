@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 // Static hrefs (labels come from i18n)
-const mainPagesHrefs = ['/', '/profile', '/messages', '/calendar'];
+const mainPagesHrefs = ['/', '/profile', '/chat', '/calendar'];
 const exploreLinksHrefs = [
   '/#consultations-section', '/#coaching-section', '/#invest-section',
   '/#testimonials-section', '/#media-appearances-section', '/#other-wins-section',

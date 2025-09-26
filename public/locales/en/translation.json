@@ -571,7 +571,7 @@
     "mainPages": [
       { "label": "Home" },
       { "label": "Profile" },
-      { "label": "Messages" },
+      { "label": "Chat" },
       { "label": "Calendar" }
     ],
     "explore": "Explore",
