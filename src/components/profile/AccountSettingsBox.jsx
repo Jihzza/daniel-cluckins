@@ -42,7 +42,7 @@ const AccountSettingsBox = ({
 
   return (
     <ProfileDashboardBox 
-      title={t('accountSettings.box.title')}
+      title={t('accountSettings.page.title')}
       to={to}
       className="bg-black/10"
     >

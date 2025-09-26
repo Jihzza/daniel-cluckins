@@ -24,7 +24,7 @@ export default function GoogleButton({ onClick, disabled, fullWidth = true }) {
         // keep your tiny hover tint without scaling the dropdowns, etc.
         disabled ? '' : 'hover:bg-gray-50',
       ].join(' ')}
-      aria-label={t('signup.form.googleButton')}
+      aria-label={t('scheduling.contactInfo.googleButtonText')}
       {...motionProps}
     >
       {/* Google mark */}
@@ -35,7 +35,7 @@ export default function GoogleButton({ onClick, disabled, fullWidth = true }) {
         <path fill="#34A853" d="M24 47.5c6.48 0 11.9-2.14 15.87-5.82l-7.1-5.52c-2.11 1.42-4.83 2.27-8.77 2.27-6.27 0-11.5-4.08-13.38-9.6l-7.87 6.5C6.48 43.1 14.7 47.5 24 47.5z"/>
         <path fill="none" d="M0 0h48v48H0z"/>
       </svg>
-      {t('signup.form.googleButton')}
+      {t('scheduling.contactInfo.googleButtonText')}
     </motion.button>
   );
 }
