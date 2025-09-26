@@ -103,6 +103,7 @@ export default function ChatbotPage() {
     try {
       const sid = sessionId;
       const userId = user?.id ||null;
+      console.debug('[saveChatRow]', { sid, userId, role, len: content?.lenght });
       const { error } = await supabase
         .from('chatbot_conversations')
         .insert([{ session_id: sid, user_id: userId, role, content }])
@@ -228,6 +229,7 @@ export default function ChatbotPage() {
       const msg = sessionStorage.getItem('pending_welcome_message');
       if (msg) {
         setMessages((prev) => [...prev, { role: 'assistant', content: msg, createdAt: new Date().toISOString() }]);
+        saveChatRow('assistant', msg);
         sessionStorage.removeItem('pending_welcome_message');
         window.dispatchEvent(new CustomEvent('welcomeMessageConsumed'));
       }
