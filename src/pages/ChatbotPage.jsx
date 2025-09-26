@@ -11,7 +11,7 @@ import Input from '../components/common/Forms/Input';
 const SESSION_STORAGE_KEY = 'chatbot-session-id';
 
 export default function ChatbotPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [sessionId, setSessionId] = useState(() => {
     const cached = sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -47,11 +47,10 @@ export default function ChatbotPage() {
   };
 
   const canSend = useMemo(() => {
-    if (!isAuthenticated) return false;
     if (isSending) return false;
     if (!inputValue.trim()) return false;
     return true;
-  }, [isAuthenticated, isSending, inputValue]);
+  }, [isSending, inputValue]);
 
   // Create a new conversation (new session id + clear state)
   function handleNewConversation() {
@@ -105,7 +104,7 @@ export default function ChatbotPage() {
           .from('chatbot_conversations')
           .select('role, content, created_at')
           .eq('session_id', sid)
-          .eq('user_id', user?.id)
+          .or(`user_id.eq.${user?.id ?? ''},user_id.is.null`)
           .order('created_at', { ascending: true });
 
         if (error) {
@@ -128,7 +127,7 @@ export default function ChatbotPage() {
 
   // Show welcome message when component mounts and user is authenticated
   useEffect(() => {
-    if (!historyLoaded || !isAuthenticated || hasShownWelcome || messages.length > 0) return;
+    if (!historyLoaded || hasShownWelcome || messages.length > 0) return;
     const showWelcome = async () => {
       try {
         if (openaiService.isConfigured()) {
@@ -158,7 +157,7 @@ export default function ChatbotPage() {
 
     // Small delay to make the welcome feel more natural
     setTimeout(showWelcome, 500);
-  }, [historyLoaded, isAuthenticated, messages.length, hasShownWelcome, user?.id]);
+  }, [historyLoaded, messages.length, hasShownWelcome, user?.id]);
 
   // Handle payment success/cancellation from URL parameters
   useEffect(() => {
@@ -390,12 +389,6 @@ export default function ChatbotPage() {
 
       <footer>
         <div className="max-w-3xl mx-auto w-full px-3 py-3">
-          {!isAuthenticated && (
-            <div className="text-xs text-white/70 mb-2">
-              Please log in to send messages.
-            </div>
-          )}
-
           {/* Change items-end -> items-center */}
           <div className="relative">
             <Input
@@ -403,8 +396,8 @@ export default function ChatbotPage() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isAuthenticated ? 'Ask me something!' : 'Log in to chat'}
-              disabled={!isAuthenticated || isSending}
+              placeholder="Ask me something!"
+              disabled={isSending}
               className="h-12 pr-12 md:text-base"   // give the input a clear height + extra right padding
             />
 

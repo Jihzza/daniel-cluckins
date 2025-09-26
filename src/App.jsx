@@ -88,7 +88,7 @@ function App() {
           />
           <Route
             path="/chat"
-            element={<ProtectedRoute><ChatbotPage /></ProtectedRoute>}
+            element={<ChatbotPage />}
           />
           <Route path="/chatbot" element={<Navigate to="/chat" replace />} />
         </Route>

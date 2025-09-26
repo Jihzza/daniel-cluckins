@@ -200,9 +200,9 @@ export default function ChatbotStep({
   };
 
   return (
-    <div className="flex flex-col h-[28rem] bg-[#002147] text-white rounded-2xl">
+    <div className="flex flex-col h-[28rem] md:h-[36rem] lg:h-[44rem] bg-[#002147] text-white rounded-2xl">
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-3 py-4 space-y-3">
+        <div className="max-w-3xl mx-auto px-3 py-2 md:py-3 space-y-3">
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
@@ -257,10 +257,15 @@ export default function ChatbotStep({
             </div>
           ))}
 
-          {isSending && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-black/10 text-white shadow-sm">
-                Typing...
+{isSending && (
+            <div className="flex justify-start" aria-live="polite" aria-atomic="true">
+              <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-black/10 text-white shadow-sm flex items-center gap-1">
+                <span className="sr-only">Assistant is typing</span>
+                <div className="flex items-end gap-1" role="status" aria-label="Assistant is typing">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/80 typing-dot" style={{ animationDelay: '0ms' }} />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/80 typing-dot" style={{ animationDelay: '150ms' }} />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/80 typing-dot" style={{ animationDelay: '300ms' }} />
+                </div>
               </div>
             </div>
           )}
