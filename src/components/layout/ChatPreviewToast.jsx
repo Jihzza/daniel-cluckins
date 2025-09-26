@@ -34,7 +34,7 @@ export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx =
           transition={{ type: "spring", stiffness: 480, damping: 36 }}
           className="fixed left-1/2 -translate-x-1/2 w-[90%] md:w-[520px] text-left 
                      rounded-3xl border px-4 py-3 shadow-xl 
-                     backdrop-blur bg-black/60 border-[#BFA200] select-none"
+                     backdrop-blur bg-[#002147] border-white/20 select-none"
           style={{
             bottom: `calc(${bottomOffsetPx}px + env(safe-area-inset-bottom))`,
             zIndex: 60, // above the nav (nav is z-50)
@@ -44,7 +44,7 @@ export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx =
           <div className="flex items-start gap-3">
             <img src={BotIcon} alt="" className="w-6 h-6 mt-0.5" />
             <div className="flex-1">
-              <div className="text-[#BFA200] text-[11px] uppercase tracking-wide mb-0.5">
+              <div className="text-white text-[11px] uppercase tracking-wide mb-0.5">
                 New from Daniel
               </div>
               <div className="text-white text-sm md:text-base leading-snug">{preview}</div>
