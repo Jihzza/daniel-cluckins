@@ -215,9 +215,9 @@ export default function SchedulingFormPage() {
 
   // Flow definitions
   const flowConfig = {
-    consultation: { totalSteps: 6 }, // 1 select -> 2 schedule -> 3 contact -> 4 payment -> 5 confirmation -> 6 chatbot
-    coaching: { totalSteps: 6 },     // 1 select -> 2 plan -> 3 contact -> 4 payment -> 5 confirmation -> 6 chatbot
-    pitchdeck: { totalSteps: 5 },    // 1 select -> 2 deck -> 3 contact -> 4 confirmation -> 5 chatbot
+    consultation: { totalSteps: 5 }, // 1 select -> 2 schedule -> 3 contact -> 4 payment -> 5 chatbot
+    coaching: { totalSteps: 5 },     // 1 select -> 2 plan -> 3 contact -> 4 payment -> 5 chatbot
+    pitchdeck: { totalSteps: 4 },    // 1 select -> 2 deck -> 3 contact -> 4 chatbot
   };
 
   // Read payment status from URL and clean it
@@ -286,23 +286,20 @@ export default function SchedulingFormPage() {
       if (currentStep === 2) return t('scheduling.consultation.title', { defaultValue: 'Schedule your consultation' });
       if (currentStep === 3) return t('scheduling.contactInfo.title', { defaultValue: 'Your contact info' });
       if (currentStep === 4) return t('scheduling.paymentStep.summaryTitle', { defaultValue: 'Payment' });
-      if (currentStep === 5) return t('scheduling.confirmation.title', { defaultValue: 'Confirmation' });
-      if (currentStep === 6) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
+      if (currentStep === 5) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
     }
 
     if (st === 'coaching') {
       if (currentStep === 2) return t('scheduling.coachingPlan.title', { defaultValue: 'Choose your coaching plan' });
       if (currentStep === 3) return t('scheduling.contactInfo.title', { defaultValue: 'Your contact info' });
       if (currentStep === 4) return t('scheduling.paymentStep.summaryTitle', { defaultValue: 'Payment' });
-      if (currentStep === 5) return t('scheduling.confirmation.title', { defaultValue: 'Confirmation' });
-      if (currentStep === 6) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
+      if (currentStep === 5) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
     }
 
     if (st === 'pitchdeck') {
       if (currentStep === 2) return t('scheduling.pitchDeck.title', { defaultValue: 'Pitch deck options' });
       if (currentStep === 3) return t('scheduling.contactInfo.title', { defaultValue: 'Your contact info' });
-      if (currentStep === 4) return t('scheduling.confirmation.title', { defaultValue: 'Confirmation' });
-      if (currentStep === 5) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
+      if (currentStep === 4) return t('scheduling.chatbot.title', { defaultValue: "Let's chat" });
     }
 
     return t('scheduling.title', { defaultValue: 'Scheduling' });
@@ -438,23 +435,15 @@ export default function SchedulingFormPage() {
                 />
               )}
 
-              {(formData.serviceType === 'pitchdeck' && currentStep === 4) && (
-                <div className="text-white/80">{t('scheduling.confirmation.title', { defaultValue: 'Confirmation' })}</div>
-              )}
-              {(formData.serviceType !== 'pitchdeck' && currentStep === 5) && (
-                <div className="text-white/80">{t('scheduling.confirmation.title', { defaultValue: 'Confirmation' })}</div>
-              )}
-
               {/* Final Chatbot step across all flows */}
-              {((formData.serviceType === 'pitchdeck' && currentStep === 5) ||
-                ((formData.serviceType === 'consultation' || formData.serviceType === 'coaching') && currentStep === 6)) && (
-                <ChatbotStep 
+              {((formData.serviceType === 'pitchdeck' && currentStep === 4) ||
+                ((formData.serviceType === 'consultation' || formData.serviceType === 'coaching') && currentStep === 5)) && (
+                <ChatbotStep
                   mode="intake"
                   paymentStatus={paymentStatus}
                   serviceType={formData.serviceType}
                   consultation={formData.consultation}
                   coaching={formData.coaching}
-                  pitchdeck={formData.pitchdeck}
                   contactInfo={formData.contactInfo}
                 />
               )}
