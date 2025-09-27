@@ -253,6 +253,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
       else navigate(p);
     };
 
+    //asd
     // If logged out and the tab needs auth, show it as selected and go directly to login
     if (!user && item.requiresAuth) {
       setGhostActivePath(item.path);
