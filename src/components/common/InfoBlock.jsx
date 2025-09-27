@@ -1,40 +1,40 @@
 // src/components/common/InfoBlock.jsx
 
 import React from 'react';
+import { motion } from 'framer-motion';
 
-/**
- * A reusable component to display a central icon with text below it.
- * This is designed as a "dumb" presentational component. It receives all
- * its data via props and is not aware of the application's state.
- *
- * @param {string} iconSrc - The require()'d source path for the icon image.
- * @param {string} altText - The alternative text for the icon for accessibility (A11y).
- * @param {React.ReactNode} children - The content (usually text) to display below the icon.
- */
-export default function InfoBlock({ iconSrc, altText, children }) {
-  // RENDER LOGIC
+export default function InfoBlock({ iconSrc, altText, children, onClick, ariaLabel }) {
+  // Keyboard-activate on Enter or Space
+  const handleKeyDown = (e) => {
+    if (!onClick) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); // prevent page scroll on Space
+      onClick();
+    }
+  };
+
   return (
-    // We use a flex container to center the content.
-    // - `flex flex-col`: Stacks children vertically.
-    // - `items-center`: Centers children horizontally.
-    // - `space-y-4`: Adds vertical spacing between the icon and the text.
-    <div className="flex flex-col items-center justify-center gap-2 w-full text-center cursor-pointer">
+    <div className="flex flex-col items-center justify-center gap-2 w-full text-center">
+      {/* Icon inside a styled, now-interactive box */}
+      <motion.div
+        className="relative overflow-hidden rounded-2xl bg-[#002147] p-4 w-20 h-20 md:w-28 md:h-28
+             flex items-center justify-center cursor-pointer outline-none
+             focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#002147']"
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        aria-label={onClick ? (ariaLabel || altText) : undefined}
+        onClick={onClick}
+        onKeyDown={handleKeyDown}
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      >
+        <img src={iconSrc} alt={altText} className="w-13 h-13 object-contain pointer-events-none select-none" />
+      </motion.div>
 
-      {/* Icon inside a styled box */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#002147] p-4 w-20 h-20 md:w-28 md:h-28 flex items-center justify-center">
-        <img
-          src={iconSrc}
-          alt={altText}
-          className="w-13 h-13 object-contain pointer-events-none select-none"
-        />
-      </div>
-
-      {/* The text content passed in as children is rendered here. */}
-      {/* We ensure the text is centered and has a constrained width for readability. */}
       <div className="text-black text-sm md:text-base font-normal mt-2">
         {children}
       </div>
-
     </div>
   );
 }
