@@ -153,7 +153,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="h-full bg-[#002147]">
+    <div className="min-h-full bg-[#002147]">
       <ProfileHeader
         fullName={profile.full_name}
         phone={profile.phone}
@@ -213,7 +213,7 @@ export default function ProfilePage() {
         <div className="pt-4">
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center p-3 w-full text-left text-red-400 hover:bg-red-900/20 transition-colors duration-200 rounded-lg border border-red-400/30"
+            className="flex items-center justify-center p-3 w-full text-left text-red-400 hover:bg-red-900/20 transition-colors duration-200 rounded-lg border border-red-400/50"
           >
             <ArrowLeftOnRectangleIcon className="h-6 w-6 mr-3 md:h-8 md:w-8" />
             <span className="text-lg font-base md:text-xl">

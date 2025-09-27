@@ -42,12 +42,12 @@ const AccountSettingsBox = ({
 
   return (
     <ProfileDashboardBox 
-      title={t('accountSettings.page.title')}
+      title={t('accountSettings.box.title')}
       to={to}
       className="bg-black/10"
     >
       <div className="space-y-3">
-        <div className="flex items-center space-x-3 p-3 rounded-xl ring-1 ring-gray-300 shadow-sm">
+        <div className="flex items-center space-x-3 p-3 rounded-xl border border-white/20 shadow-sm">
           <UserCircleIcon className="h-5 w-5 text-white/80" />
           <div>
             <span className="text-sm font-medium text-white/90 block">
@@ -59,7 +59,7 @@ const AccountSettingsBox = ({
           </div>
         </div>
         
-        <div className="flex items-center space-x-3 p-3 rounded-xl ring-1 ring-gray-300 shadow-sm">
+        <div className="flex items-center space-x-3 p-3 rounded-xl border border-white/20 shadow-sm">
           <ShieldCheckIcon className="h-5 w-5 text-white/80" />
           <div>
             <span className="text-sm font-medium text-white/90 block">
@@ -71,7 +71,7 @@ const AccountSettingsBox = ({
           </div>
         </div>
         
-        <div className="flex items-center space-x-3 p-3 rounded-xl ring-1 ring-gray-300 shadow-sm">
+        <div className="flex items-center space-x-3 p-3 rounded-xl border border-white/20 shadow-sm">
           <Cog6ToothIcon className="h-5 w-5 text-white/80" />
           <div>
             <span className="text-sm font-medium text-white/90 block">

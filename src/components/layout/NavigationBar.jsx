@@ -224,7 +224,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
     go(item.path);
   };
 
-  const avatarPx = useBreakpointValue({ base: 24, md: 32, lg: 28 });
+  const avatarPx = useBreakpointValue({ base: 28, md: 32, lg: 28 });
 
   // NEW: If any real tab matches the current path, ignore ghost so only one label shows
   const hasRealActive = useMemo(
@@ -270,7 +270,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
               {/* Icon / Avatar */}
               {showAvatar ? (
                 <motion.div
-                  className="grid place-items-center"
+                  className="grid place-items-center shrink-0"
                   style={{ width: avatarPx, height: avatarPx }}
                   animate={{ scale: baseScale }}
                   whileHover={{ scale: hoverScale }}

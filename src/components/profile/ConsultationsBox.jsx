@@ -59,7 +59,7 @@ const ConsultationsBox = ({
       <div className="space-y-2">
         {displayed.length > 0 ? (
           displayed.map((c, idx) => (
-            <div key={idx} className="flex items-center justify-between p-3 rounded-xl ring-1 ring-gray-300 shadow-sm">
+            <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-white/20 shadow-sm">
               <div className="flex items-center space-x-3">
                 <ClockIcon className="h-4 w-4 text-white/80" />
                 <span className="text-sm font-medium text-white/90">

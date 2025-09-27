@@ -5,6 +5,7 @@ html,
 body,
 #root {
   height: 100%;
+  overflow: hidden;
   margin: 0;
   padding: 0;
   scroll-behavior: smooth;
@@ -22,13 +23,51 @@ body,
   user-drag: none;
 }
 
+/* Subtle, warm halo that keeps the #BFA200 icon readable */
 .chat-icon-glow {
-  filter:
-    drop-shadow(0 0 4px #BFA200)
-    drop-shadow(0 0 8px #BFA200)
-    drop-shadow(0 0 16px #BFA200)
-    drop-shadow(0 0 24px #BFA200);
-  transition: filter 0.3s ease-in-out;
+  position: relative;                 /* anchor pseudo-elements */
+  filter: brightness(1.01);           /* tiny lift so icon isn't washed out */
+  will-change: transform, filter;
+}
+
+/* Rotating/pulsing halo only (no sparkles) */
+.chat-icon-glow::before {
+  content: "";
+  position: absolute;
+  inset: -6px;                        /* just outside icon box */
+  border-radius: 9999px;
+  z-index: -1;
+  filter: blur(6px);
+
+  background:
+    conic-gradient(
+      from var(--halo-angle, 0deg),
+      transparent 0deg,
+      rgba(201, 166, 0, 0.55) 40deg,
+      rgba(191, 162, 0, 0.60) 120deg,
+      rgba(142, 119, 0, 0.50) 200deg,
+      rgba(201, 166, 0, 0.55) 280deg,
+      rgba(162, 137, 10, 0.5)360deg, 
+      transparent 360deg
+    );
+
+  /* Slightly slower + gentler than before */
+  animation: halo-rotate 2s linear infinite, halo-pulse 1.5s ease-in-out infinite;
+     mix-blend-mode: screen;
+  
+}
+
+/* Keyframes */
+@keyframes halo-rotate { to { --halo-angle: 360deg; } }
+@keyframes halo-pulse {
+  0%, 100% { opacity: 0.75; transform: scale(0.95) }
+  50%      { opacity: 0.95; transform: scale(1.05) } /* gentler pulse */
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .chat-icon-glow::before { animation: none !important; }
+  .chat-icon-glow { filter: drop-shadow(0 0 8px rgba(191, 162, 0, 0.55)); }
 }
 
 :root {

@@ -36,7 +36,7 @@ const FinancesBox = ({
       className="bg-black/10"
     >
       <div className="space-y-3">
-        <div className="flex items-center justify-between p-3 rounded-xl ring-1 ring-gray-300 shadow-sm">
+        <div className="flex items-center justify-between p-3 rounded-xl border border-white/20 shadow-sm">
           <div className="flex items-center space-x-2">
             <CurrencyEuroIcon className="h-5 w-5 text-white/80" />
             <span className="text-sm font-medium text-white/90">
@@ -48,7 +48,7 @@ const FinancesBox = ({
           </span>
         </div>
 
-        <div className="flex items-center justify-between p-3 rounded-xl ring-1 ring-gray-300 shadow-sm">
+        <div className="flex items-center justify-between p-3 rounded-xl border border-white/20 shadow-sm">
           <div className="flex items-center space-x-2">
             <CurrencyEuroIcon className="h-5 w-5 text-white/80" />
             <span className="text-sm font-medium text-white/90">
@@ -60,7 +60,7 @@ const FinancesBox = ({
           </span>
         </div>
 
-        <div className="flex items-center justify-between p-3 rounded-xl ring-1 ring-gray-300 shadow-sm">
+        <div className="flex items-center justify-between p-3 rounded-xl border border-white/20 shadow-sm">
           <div className="flex items-center space-x-2">
             <CurrencyEuroIcon className="h-5 w-5 text-white/80" />
             <span className="text-sm font-medium text-white/90">

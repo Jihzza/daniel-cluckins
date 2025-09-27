@@ -48,7 +48,7 @@ export default function ChatbotHistoryBox({
           displayed.map((row) => (
             <div
               key={row.session_id}
-              className="w-full flex items-center justify-between p-3 rounded-xl ring-1 ring-gray-300 shadow-sm"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/20 shadow-sm"
               title={t("chatbotHistory.box.itemTooltip")}
             >
               <div className="flex items-center space-x-3">
