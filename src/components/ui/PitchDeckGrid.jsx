@@ -65,7 +65,13 @@ function useCols() {
   return cols;
 }
 
-export default function PitchDeckGrid({ items = [], showLabels = true, imageSize = "w-16 h-16", fixedHeight = true, showExpandedImage = true }) {
+export default function PitchDeckGrid({
+  items = [],
+  showLabels = true,
+  imageSize = "w-16 h-16",
+  fixedHeight = true,
+  showExpandedImage = true,
+}) {
   const normalized = useMemo(
     () =>
       (items || []).map((it) =>
@@ -87,11 +93,22 @@ export default function PitchDeckGrid({ items = [], showLabels = true, imageSize
   const [active, setActive] = useState(null);
   const listId = useId();
   const prefersReduced = useReducedMotion();
-
   const tabRefs = useRef([]);
+
   useEffect(() => {
     tabRefs.current = new Array(normalized.length);
   }, [normalized.length]);
+
+  // --- Preload & decode expanded images on mount so they are instant when panel opens ---
+  useEffect(() => {
+    const urls = normalized.map((it) => it.expandedImage).filter(Boolean);
+    urls.forEach((url) => {
+      const img = new Image();
+      img.src = url;
+      // Decode ahead of time so first paint is instant
+      img.decode?.().catch(() => {});
+    });
+  }, [normalized]);
 
   const ids = useMemo(() => {
     const uid = listId?.toString().replace(/:/g, "") || "pitchdeck";
@@ -148,15 +165,29 @@ export default function PitchDeckGrid({ items = [], showLabels = true, imageSize
   const activeRow = active === null ? -1 : Math.floor(active / cols);
 
   const panelMotion = prefersReduced
-    ? { initial: false, animate: { height: "auto", opacity: 1 }, exit: { height: "auto", opacity: 1 }, transition: { duration: 0 } }
-    : { initial: { height: 0, opacity: 0 }, animate: { height: "10rem", opacity: 1 }, exit: { height: 0, opacity: 0 }, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } };
+    ? {
+        initial: false,
+        animate: { height: "auto", opacity: 1 },
+        exit: { height: "auto", opacity: 1 },
+        transition: { duration: 0 },
+      }
+    : {
+        initial: { height: 0, opacity: 0 },
+        animate: { height: "10rem", opacity: 1 },
+        exit: { height: 0, opacity: 0 },
+        transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+      };
 
   return (
     <section className="w-full">
       <div className="mx-auto w-full">
         <LayoutGroup>
           <motion.div layout>
-            <div role="tablist" aria-label="PitchDeck Options" className="grid grid-cols-2 md:grid-cols-8 gap-3 py-4">
+            <div
+              role="tablist"
+              aria-label="PitchDeck Options"
+              className="grid grid-cols-2 md:grid-cols-8 gap-3 py-4"
+            >
               {rows.map((row, rIdx) => (
                 <React.Fragment key={`row-${rIdx}`}>
                   {row.map((item, iInRow) => {
@@ -202,17 +233,48 @@ export default function PitchDeckGrid({ items = [], showLabels = true, imageSize
 
                   <AnimatePresence initial={false}>
                     {active !== null && activeRow === rIdx && normalized[active] && (
-                      <motion.div key={`panel-row-${rIdx}`} role="region" id={ids[active].panelId} aria-labelledby={ids[active].tabId} className="overflow-hidden col-span-2 md:col-span-8" {...panelMotion}>
-                        <div className={`py-4 text-center text-white ${fixedHeight ? 'h-40 flex flex-col items-center justify-center' : ''}`}>
-                          {showExpandedImage && (normalized[active].expandedImage || normalized[active].image) && (
-                            <div className="mb-4 flex justify-center h-48 md:h-56">
-                              <img src={normalized[active].expandedImage || normalized[active].image} alt={normalized[active].imageAlt || normalized[active].label || ""} className="w-48 md:w-56   object-contain" loading="eager" style={{ willChange: 'transform' }} />
-                            </div>
-                          )}
+                      <motion.div
+                        key={`panel-row-${rIdx}`}
+                        role="region"
+                        id={ids[active].panelId}
+                        aria-labelledby={ids[active].tabId}
+                        className="overflow-hidden col-span-2 md:col-span-8"
+                        {...panelMotion}
+                      >
+                        <div
+                          className={`py-4 text-center text-white ${
+                            fixedHeight ? "h-40 flex flex-col items-center justify-center" : ""
+                          }`}
+                        >
+                          {showExpandedImage &&
+                            (normalized[active].expandedImage || normalized[active].image) && (
+                              <div className="mb-4 flex justify-center h-48 md:h-56">
+                                <img
+                                  src={
+                                    normalized[active].expandedImage ||
+                                    normalized[active].image
+                                  }
+                                  alt={
+                                    normalized[active].imageAlt ||
+                                    normalized[active].label ||
+                                    ""
+                                  }
+                                  className="w-48 md:w-56 object-contain"
+                                  loading="eager"
+                                  style={{ willChange: "transform" }}
+                                />
+                              </div>
+                            )}
+
                           {!showExpandedImage && normalized[active].label && (
-                            <h3 className="text-lg md:text-xl font-semibold mb-3 text-white">{normalized[active].label}</h3>
+                            <h3 className="text-lg md:text-xl font-semibold mb-3 text-white">
+                              {normalized[active].label}
+                            </h3>
                           )}
-                          <p className="text-sm md:text-lg">{normalized[active].paragraph || ""}</p>
+
+                          <p className="text-sm md:text-lg">
+                            {normalized[active].paragraph || ""}
+                          </p>
                         </div>
                       </motion.div>
                     )}
@@ -222,9 +284,35 @@ export default function PitchDeckGrid({ items = [], showLabels = true, imageSize
             </div>
           </motion.div>
         </LayoutGroup>
+
+        {/* Optional DOM-based warm-up: render tiny offscreen copies so the browser fetches early */}
+        <div aria-hidden="true">
+          {Array.from(
+            new Set(
+              normalized
+                .map((it) => it.expandedImage || it.image)
+                .filter(Boolean)
+            )
+          ).map((url) => (
+            <img
+              key={url}
+              src={url}
+              alt=""
+              width="1"
+              height="1"
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                opacity: 0,
+                pointerEvents: "none",
+              }}
+              decoding="async"
+              fetchpriority="low"
+            />
+          ))}
+        </div>
       </div>
     </section>
   );
 }
-
-
