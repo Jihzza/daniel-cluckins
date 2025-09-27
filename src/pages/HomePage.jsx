@@ -167,6 +167,8 @@ export default function HomePage() {
 
         (async () => {
             try {
+                console.log('[HomePage] preparing welcome message… user?', !!user);
+
                 const profile = user ? {
                     full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
                     email: user.email || null,
@@ -181,6 +183,7 @@ export default function HomePage() {
                 }
 
                 if (!cancelled && msg) {
+                    console.log('[HomePage] emitting welcome preview:', msg);
                     emitWelcomePreview(msg);
                 }
             } catch (err) {

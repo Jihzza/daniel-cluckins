@@ -308,7 +308,7 @@ export default function PitchDeckGrid({
                 pointerEvents: "none",
               }}
               decoding="async"
-              fetchpriority="low"
+              fetchPriority="low"
             />
           ))}
         </div>

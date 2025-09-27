@@ -58,7 +58,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
-  
+
   // Glow state for chat icon when chat section is visible
   const [glowChatIcon, setGlowChatIcon] = useState(false);
   useEffect(() => {
@@ -66,35 +66,65 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
     window.addEventListener('chatSectionVisible', handler);
     return () => window.removeEventListener('chatSectionVisible', handler);
   }, []);
-  
+
   // Chatbot unread badge
   const [hasPendingWelcome, setHasPendingWelcome] = useState(false);
   const [welcomePreview, setWelcomePreview] = useState('');
   const [showPopup, setShowPopup] = useState(false);
   const popupTimeoutRef = useRef(null);
+  const hasShownRef = useRef(false)
+  // Global per-page-load guard (resets on full reload)
+  if (typeof window !== 'undefined' && typeof window.__welcome_preview_shown === 'undefined') {
+    window.__welcome_preview_shown = false;
+  }
 
   useEffect(() => {
-    const pending = sessionStorage.getItem('pending_welcome_message');
-    if (pending) {
-      setHasPendingWelcome(true);
-      setWelcomePreview(pending);
-      setShowPopup(true);
-      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
-      popupTimeoutRef.current = setTimeout(() => setShowPopup(false), 5000);
-    }
+    console.log('[Nav] mount: pathname=', location.pathname);
+    hasShownRef.current = !!window.__welcome_preview_shown;
 
-    const onReady = (e) => {
-      const msg = e.detail || sessionStorage.getItem('pending_welcome_message');
-      if (msg) {
-        setHasPendingWelcome(true);
-        setWelcomePreview(msg);
+    const maybeShow = (source, msg) => {
+      console.log('[Nav] maybeShow from', source, { msg, alreadyShown: hasShownRef.current });
+      if (!msg) return;
+      setHasPendingWelcome(true);
+      setWelcomePreview(msg);
+      if (!hasShownRef.current) {
+        console.log('[Nav] showing toast now (first time this SPA session)');
         setShowPopup(true);
+        hasShownRef.current = true;
+        window.__welcome_preview_shown = true;
+        // consume pending store so future navigations don’t keep “finding” the same message
+        try { sessionStorage.removeItem('pending_welcome_message'); } catch { }
         if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
-        popupTimeoutRef.current = setTimeout(() => setShowPopup(false), 5000);
+        popupTimeoutRef.current = setTimeout(() => {
+          console.log('[Nav] auto-hide toast after 5s');
+          setShowPopup(false);
+        }, 5000);
+        if (performance && performance.getEntriesByType) {
+          const nav = performance.getEntriesByType('navigation')[0];
+          console.log('[Nav] navigationType:', nav?.type); // 'reload', 'navigate', etc.
+        }
+
+      } else {
+        console.log('[Nav] toast already shown in this SPA session — not showing again');
       }
     };
 
+    // If Home already put the message in sessionStorage before we mounted
+    const pending = sessionStorage.getItem('pending_welcome_message');
+    if (pending) {
+      maybeShow('sessionStorage(pending)', pending);
+    } else {
+      console.log('[Nav] no pending_welcome_message in sessionStorage on mount');
+    }
+
+    const onReady = (e) => {
+      const msg = e?.detail || sessionStorage.getItem('pending_welcome_message');
+      console.log('[Nav] welcomeMessageReady event', { detail: e?.detail, fromStorage: !!sessionStorage.getItem('pending_welcome_message') });
+      maybeShow('welcomeMessageReady(event)', msg);
+    };
+
     const onConsumed = () => {
+      console.log('[Nav] welcomeMessageConsumed event');
       setHasPendingWelcome(false);
       setWelcomePreview('');
       setShowPopup(false);
@@ -105,11 +135,23 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
     window.addEventListener('welcomeMessageConsumed', onConsumed);
 
     return () => {
+      console.log('[Nav] unmount cleanup');
       window.removeEventListener('welcomeMessageReady', onReady);
       window.removeEventListener('welcomeMessageConsumed', onConsumed);
       if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
     };
-  }, [location.pathname]);
+    // run once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Close the toast when entering /chat (but do NOT re-open on other pages)
+  useEffect(() => {
+    console.log('[Nav] route change:', location.pathname, 'showPopup=', showPopup);
+    if (location.pathname === '/chat' && showPopup) {
+      console.log('[Nav] hiding toast because we are on /chat');
+      setShowPopup(false);
+    }
+  }, [location.pathname, showPopup]);
 
   const avatarSrc =
     user?.user_metadata?.avatar_url || user?.user_metadata?.picture || "";
@@ -174,21 +216,21 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
     // Special case: Home icon with double-click behavior
     if (item.path === "/") {
       const isOnHomePage = location.pathname === "/";
-      
+
       if (isOnHomePage) {
         // On home page: handle double-click logic
         homeClickCountRef.current += 1;
-        
+
         // Clear any existing timeout
         if (homeClickTimeoutRef.current) {
           clearTimeout(homeClickTimeoutRef.current);
         }
-        
+
         // Set timeout to reset click count
         homeClickTimeoutRef.current = setTimeout(() => {
           homeClickCountRef.current = 0;
         }, 300); // 300ms window for double-click
-        
+
         // If this is the second click, scroll to top
         if (homeClickCountRef.current === 2) {
           // Find the scroll container (main content area)
@@ -218,6 +260,15 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
       const loginUrl = `/login?next=${encodeURIComponent(item.path)}`;
       go(loginUrl);
       return;
+    }
+
+    if (item.isChat) {
+      // Tell everyone we consumed it
+      try { window.dispatchEvent(new Event('welcomeMessageConsumed')); } catch {}
+      // Local state cleanup (in case no one else does)
+      setHasPendingWelcome(false);
+      setWelcomePreview('');
+      setShowPopup(false);
     }
 
     // Normal navigation
@@ -299,8 +350,16 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
                     alt={item.label}
                     className="w-full h-full object-contain p-[1px] pointer-events-none select-none"
                   />
-                  
+                  {/* 🔴 Unread badge */}
+                  {item.isChat && hasPendingWelcome && location.pathname !== '/chat' && (
+                    <span
+                      className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-black"
+                      aria-label={t('chatbot.previewToast.newFrom', { defaultValue: 'New message' })}
+                      role="status"
+                    />
+                  )}
                 </motion.div>
+
               )}
 
               {/* Label */}
@@ -318,7 +377,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
         text={welcomePreview}
         bottomOffsetPx={navBarHeight + 60}
         onClick={() => navigate('/chat')}
-        />
+      />
     </nav>
   );
 }

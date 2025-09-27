@@ -15,7 +15,11 @@ export default function ChatPreviewToast({ open, text, onClick, bottomOffsetPx =
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      console.log('[ChatPreviewToast] closed');
+      return;
+    }
+    console.log('[ChatPreviewToast] open with text:', full);
     setIdx(0);
     const speed = 18; // kept as-is (unused local; preserving original)
     const id = setInterval(() => {
