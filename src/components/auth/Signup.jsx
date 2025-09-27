@@ -34,7 +34,7 @@ export default function Signup({
     <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className={containerClassName} noValidate>
       {showNameField && (
         <div>
-          <label htmlFor="name" className={`block text-sm font-medium text-left ${textColor === 'white' ? 'text-white' : 'text-black'}`}>
+          <label htmlFor="name" className={`block text-sm font-medium text-left text-white`}>
             {t('signup.form.nameLabel', { defaultValue: 'Name' })}
           </label>
           <div className="mt-1">
@@ -58,7 +58,7 @@ export default function Signup({
 
       {/* Email */}
       <div>
-        <label htmlFor="email" className={`block text-sm font-medium text-left ${textColor === 'white' ? 'text-white' : 'text-black'}`}>
+        <label htmlFor="email" className={`block text-sm font-medium text-left text-white`}>
           {t('signup.form.emailLabel')}
         </label>
         <div className="mt-1">
@@ -82,7 +82,7 @@ export default function Signup({
 
       {/* Password */}
       <div>
-        <label htmlFor="password" className={`block text-sm font-medium text-left ${textColor === 'white' ? 'text-white' : 'text-black'}`}>
+        <label htmlFor="password" className={`block text-sm font-medium text-left text-white`}>
           {t('signup.form.passwordLabel')}
         </label>
         <div className="mt-1">
@@ -111,7 +111,7 @@ export default function Signup({
 
       {/* Confirm Password */}
       <div>
-        <label htmlFor="confirm" className={`block text-sm font-medium text-left ${textColor === 'white' ? 'text-white' : 'text-black'}`}>
+        <label htmlFor="confirm" className={`block text-sm font-medium text-left text-white`}>
           {t('signup.form.confirmPasswordLabel')}
         </label>
         <div className="mt-1">
@@ -164,7 +164,7 @@ export default function Signup({
       </div>
 
       {/* Bottom link */}
-      <p className={`mt-6 text-center text-sm ${textColor === 'white' ? 'text-white/80' : 'text-black'}`}>
+      <p className={`mt-6 text-center text-sm text-white/80`}>
         {t('signup.form.loginPrompt')}{' '}
         <Link to="/login" className="font-semibold text-[#bfa200] hover:text-[#bfa200]/80 underline">
           {t('signup.form.loginLink')}

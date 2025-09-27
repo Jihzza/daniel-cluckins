@@ -59,7 +59,7 @@ export default function SignupSection() {
 
             <div className="mt-8 flex justify-center">
                 <div className="w-full max-w-md">
-                    <div>
+                    <div className="w-full max-w-2xl p-8 space-y-4 bg-[#002147] rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200">
                         <Signup onSubmit={handleSignup} onGoogleSignIn={handleGoogleSignIn} isLoading={isLoading} textColor="black" showNameField />
                         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
                     </div>
