@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { openaiService } from '../services/openaiService';
 import { emitWelcomePreview } from '../utils/welcomeEmitter';
 import { useAuth } from '../contexts/AuthContext';
+import { getOrCreateChatSession } from '../services/chatService';
 
 export default function HomePage() {
     const navigate = useNavigate();
@@ -183,8 +184,15 @@ export default function HomePage() {
                 }
 
                 if (!cancelled && msg) {
-                    console.log('[HomePage] emitting welcome preview:', msg);
-                    emitWelcomePreview(msg);
+                    const sessionId = getOrCreateChatSession();
+                    const emittedKey = `welcome_emitted:${sessionId}`;
+                    if (!sessionStorage.getItem(emittedKey)) {
+                        sessionStorage.setItem(emittedKey, 'true');
+                        console.log('[HomePage] emitting welcome preview (first time this session):', msg);
+                        emitWelcomePreview(msg); // writes pending_welcome_message & fires event
+                    } else {
+                        console.log('[HomePage] welcome already emitted for this session — skipping');
+                    }
                 }
             } catch (err) {
                 console.error('[HomePage] Failed to build welcome preview:', err);
@@ -193,6 +201,13 @@ export default function HomePage() {
 
         return () => { cancelled = true; };
     }, [user?.id]);
+
+    const ranRef = useRef(false);
+    useEffect(() => {
+      if (ranRef.current) return;
+      ranRef.current = true;
+      // side-effect here (emit toast, write to DB, etc.)
+    }, []);
 
     return (
         <div

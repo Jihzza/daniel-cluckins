@@ -1,7 +1,7 @@
 // supabaseClient.js (supabase-js v2)
 import { createClient } from '@supabase/supabase-js'
 
-const SESSION_ID_KEY = 'chat_session_id'
+const SESSION_ID_KEY = 'chatbot-session-id'
 const existing = sessionStorage.getItem(SESSION_ID_KEY)
 const sessionId = existing || (crypto.randomUUID(), sessionStorage.setItem(SESSION_ID_KEY, crypto.randomUUID()), sessionStorage.getItem(SESSION_ID_KEY))
 

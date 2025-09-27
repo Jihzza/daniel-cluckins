@@ -86,7 +86,7 @@ export default function ChatbotPage() {
       const url = new URL(window.location.href);
       url.searchParams.delete('payment');
       window.history.replaceState(null, '', url.toString());
-    } catch {}
+    } catch { }
   }
 
   useEffect(() => {
@@ -96,7 +96,7 @@ export default function ChatbotPage() {
   async function saveChatRow(role, content) {
     try {
       const sid = sessionId;
-      const userId = user?.id ||null;
+      const userId = user?.id || null;
       console.debug('[saveChatRow]', { sid, userId, role, len: content?.lenght });
       const { error } = await supabase
         .from('chatbot_conversations')
@@ -145,264 +145,233 @@ export default function ChatbotPage() {
     loadHistory();
   }, [user?.id, sessionId]);
 
-  // Welcome message
-  useEffect(() => {
-    if (!historyLoaded || hasShownWelcome || messages.length > 0) return;
-    const showWelcome = async () => {
+
+    // Payment banners
+    useEffect(() => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const payment = urlParams.get('payment');
+      const type = urlParams.get('type');
+
+      if (payment === 'success') {
+        if (type === 'appointment') {
+          setMessages((prev) => [...prev, {
+            role: 'assistant',
+            content: t('chatbot.page.messages.paymentSuccessAppointment'),
+            createdAt: new Date().toISOString()
+          }]);
+        } else if (type === 'subscription') {
+          const plan = urlParams.get('plan');
+          setMessages((prev) => [...prev, {
+            role: 'assistant',
+            content: t('chatbot.page.messages.paymentSuccessSubscription', { plan }),
+            createdAt: new Date().toISOString()
+          }]);
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (payment === 'cancelled') {
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          content: t('chatbot.page.messages.paymentCancelled'),
+          createdAt: new Date().toISOString()
+        }]);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }, [t]);
+
+    // Consume pending welcome message
+    useEffect(() => {
       try {
-        if (openaiService.isConfigured()) {
+        const msg = sessionStorage.getItem('pending_welcome_message');
+        if (msg) {
+          setMessages((prev) => [...prev, { role: 'assistant', content: msg, createdAt: new Date().toISOString() }]);
+          saveChatRow('assistant', msg);
+          sessionStorage.removeItem('pending_welcome_message');
+          window.dispatchEvent(new CustomEvent('welcomeMessageConsumed'));
+        }
+      } catch { }
+    }, []);
+
+    const handleSend = async () => {
+      if (!canSend) return;
+
+      const content = inputValue.trim();
+      setInputValue('');
+      setMessages((prev) => [...prev, { role: 'user', content, createdAt: new Date().toISOString() }]);
+      await saveChatRow('user', content);
+      setIsSending(true);
+
+      try {
+        if (!openaiService.isConfigured()) {
+          const msg = t('chatbot.page.messages.notConfigured');
+          setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+          await saveChatRow('assistant', msg);
+          return;
+        }
+
+        try {
+          const currentConversation = [...messages, { role: 'user', content }];
+
           const userProfile = user ? {
             full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
             email: user.email || null,
             phone: user.user_metadata?.phone || null
           } : null;
 
-          const welcomeMessage = await openaiService.getWelcomeMessage(user?.id, userProfile);
-          setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: welcomeMessage, createdAt: new Date().toISOString() }]);
-          await saveChatRow('assistant', welcomeMessage);
-        } else {
-          const fallback = t('chatbot.page.messages.welcomeFallback');
-          setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: fallback, createdAt: new Date().toISOString() }]);
-          await saveChatRow('assistant', fallback);
+          const response = await openaiService.getChatResponse(currentConversation, user?.id, userProfile);
+
+          if (response.success) {
+            setMessages(prev => [...prev, { role: 'assistant', content: response.content, createdAt: new Date().toISOString() }]);
+            await saveChatRow('assistant', response.content);
+          } else {
+            throw new Error('Failed to get AI response');
+          }
+        } catch (aiError) {
+          console.error('OpenAI service error:', aiError);
+          let errorMessage = t('chatbot.page.messages.processingError');
+
+          if (aiError.message.includes('quota')) {
+            errorMessage = t('chatbot.page.messages.quotaError');
+          } else if (aiError.message.includes('api_key')) {
+            errorMessage = t('chatbot.page.messages.apiKeyError');
+          }
+
+          setMessages(prev => [...prev, { role: 'assistant', content: errorMessage, createdAt: new Date().toISOString() }]);
+          await saveChatRow('assistant', errorMessage);
         }
-      } catch (error) {
-        console.error('Error showing welcome message:', error);
-        const fallback = t('chatbot.page.messages.welcomeFallback');
-        setMessages(prev => prev.length ? prev : [{ role: 'assistant', content: fallback, createdAt: new Date().toISOString() }]);
-        await saveChatRow('assistant', fallback);
+      } catch (err) {
+        const msg = t('chatbot.page.messages.networkError');
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: msg, createdAt: new Date().toISOString() },
+        ]);
+        await saveChatRow('assistant', msg);
+      } finally {
+        setIsSending(false);
       }
-      setHasShownWelcome(true);
     };
 
-    setTimeout(showWelcome, 500);
-  }, [historyLoaded, messages.length, hasShownWelcome, user?.id, t]);
-
-  // Payment banners
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const payment = urlParams.get('payment');
-    const type = urlParams.get('type');
-
-    if (payment === 'success') {
-      if (type === 'appointment') {
-        setMessages((prev) => [...prev, {
-          role: 'assistant',
-          content: t('chatbot.page.messages.paymentSuccessAppointment'),
-          createdAt: new Date().toISOString()
-        }]);
-      } else if (type === 'subscription') {
-        const plan = urlParams.get('plan');
-        setMessages((prev) => [...prev, {
-          role: 'assistant',
-          content: t('chatbot.page.messages.paymentSuccessSubscription', { plan }),
-          createdAt: new Date().toISOString()
-        }]);
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
       }
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (payment === 'cancelled') {
-      setMessages((prev) => [...prev, {
-        role: 'assistant',
-        content: t('chatbot.page.messages.paymentCancelled'),
-        createdAt: new Date().toISOString()
-      }]);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [t]);
+    };
 
-  // Consume pending welcome message
-  useEffect(() => {
-    try {
-      const msg = sessionStorage.getItem('pending_welcome_message');
-      if (msg) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: msg, createdAt: new Date().toISOString() }]);
-        saveChatRow('assistant', msg);
-        sessionStorage.removeItem('pending_welcome_message');
-        window.dispatchEvent(new CustomEvent('welcomeMessageConsumed'));
-      }
-    } catch { }
-  }, []);
+    return (
+      <div className="flex flex-col h-full bg-[#002147] text-white">
+        <header className="sticky top-0 z-10 border-b border-white/10 bg-[#002147]">
+          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => navigate('/profile/chatbot-history')}
+              className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
+              title={t('chatbot.page.header.historyTitle')}
+              aria-label={t('chatbot.page.header.historyAria')}
+            >
+              <FiClock />
+            </button>
 
-  const handleSend = async () => {
-    if (!canSend) return;
-
-    const content = inputValue.trim();
-    setInputValue('');
-    setMessages((prev) => [...prev, { role: 'user', content, createdAt: new Date().toISOString() }]);
-    await saveChatRow('user', content);
-    setIsSending(true);
-
-    try {
-      if (!openaiService.isConfigured()) {
-        const msg = t('chatbot.page.messages.notConfigured');
-        setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
-        await saveChatRow('assistant', msg);
-        return;
-      }
-
-      try {
-        const currentConversation = [...messages, { role: 'user', content }];
-
-        const userProfile = user ? {
-          full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-          email: user.email || null,
-          phone: user.user_metadata?.phone || null
-        } : null;
-
-        const response = await openaiService.getChatResponse(currentConversation, user?.id, userProfile);
-
-        if (response.success) {
-          setMessages(prev => [...prev, { role: 'assistant', content: response.content, createdAt: new Date().toISOString() }]);
-          await saveChatRow('assistant', response.content);
-        } else {
-          throw new Error('Failed to get AI response');
-        }
-      } catch (aiError) {
-        console.error('OpenAI service error:', aiError);
-        let errorMessage = t('chatbot.page.messages.processingError');
-
-        if (aiError.message.includes('quota')) {
-          errorMessage = t('chatbot.page.messages.quotaError');
-        } else if (aiError.message.includes('api_key')) {
-          errorMessage = t('chatbot.page.messages.apiKeyError');
-        }
-
-        setMessages(prev => [...prev, { role: 'assistant', content: errorMessage, createdAt: new Date().toISOString() }]);
-        await saveChatRow('assistant', errorMessage);
-      }
-    } catch (err) {
-      const msg = t('chatbot.page.messages.networkError');
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: msg, createdAt: new Date().toISOString() },
-      ]);
-      await saveChatRow('assistant', msg);
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-[#002147] text-white">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-[#002147]">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => navigate('/profile/chatbot-history')}
-            className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
-            title={t('chatbot.page.header.historyTitle')}
-            aria-label={t('chatbot.page.header.historyAria')}
-          >
-            <FiClock />
-          </button>
-
-          <div className="flex-1" />
-
-          <button
-            type="button"
-            onClick={handleNewConversation}
-            className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
-            title={t('chatbot.page.header.newTitle')}
-            aria-label={t('chatbot.page.header.newAria')}
-          >
-            <FiPlus />
-          </button>
-        </div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-3 py-4 space-y-3">
-          {messages.map((m, idx) => (
-            <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`group max-w-[85%] rounded-2xl px-3 py-2 text-sm md:text-base shadow-sm ${m.role === 'user'
-                  ? 'bg-[#BFA200] text-black'
-                  : 'bg-black/10 text-white'
-                  }`}
-              >
-                {m.content.split('\n').map((line, lineIdx) => {
-                  const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
-                  if (linkMatch) {
-                    const [fullMatch, linkText, linkUrl] = linkMatch;
-                    const beforeLink = line.substring(0, line.indexOf(fullMatch));
-                    const afterLink = line.substring(line.indexOf(fullMatch) + fullMatch.length);
-
-                    return (
-                      <div key={lineIdx}>
-                        {beforeLink}
-                        <button
-                          onClick={() => { window.location.href = linkUrl; }}
-                          className="text-[#BFA200] underline hover:no-underline font-semibold bg-transparent border-none cursor-pointer p-0"
-                        >
-                          {linkText}
-                        </button>
-                        {afterLink}
-                      </div>
-                    );
-                  }
-
-                  if (line.startsWith('**') && line.endsWith('**')) {
-                    return <div key={lineIdx} className="font-bold">{line.slice(2, -2)}</div>;
-                  }
-                  if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-                    return <div key={lineIdx} className="italic opacity-75">{line.slice(1, -1)}</div>;
-                  }
-
-                  return <div key={lineIdx}>{line}</div>;
-                })}
-                <div className={`mt-1 text-[10px] md:text-xs opacity-70 select-none ${m.role === 'user' ? 'text-black/70 text-right' : 'text-white/70'}`}>
-                  {formatTimestamp(m.createdAt)}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {isSending && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-black/10 text-white shadow-sm">
-                {t('chatbot.page.typing')}
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </main>
-
-      <footer>
-        <div className="max-w-3xl mx-auto w-full px-3 py-3">
-          <div className="relative">
-            <Input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t('chatbot.page.inputPlaceholder')}
-              disabled={isSending}
-              className="h-12 pr-12 md:text-base"
-            />
+            <div className="flex-1" />
 
             <button
-              onClick={handleSend}
-              disabled={!canSend}
-              className={`absolute inset-y-0 right-2 flex items-center justify-center rounded-xl
-      ${canSend ? 'cursor-pointer text-white hover:opacity-90' : 'text-white cursor-not-allowed'}`}
-              aria-label={t('chatbot.page.sendAria')}
-              title={t('chatbot.page.sendTitle')}
-              style={{ width: '2.25rem' }}
+              type="button"
+              onClick={handleNewConversation}
+              className="p-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring focus:ring-white/30"
+              title={t('chatbot.page.header.newTitle')}
+              aria-label={t('chatbot.page.header.newAria')}
             >
-              <FiSend className="text-xl" />
+              <FiPlus />
             </button>
           </div>
+        </header>
 
-        </div>
-      </footer>
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-3 py-4 space-y-3">
+            {messages.map((m, idx) => (
+              <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`group max-w-[85%] rounded-2xl px-3 py-2 text-sm md:text-base shadow-sm ${m.role === 'user'
+                    ? 'bg-[#BFA200] text-black'
+                    : 'bg-black/10 text-white'
+                    }`}
+                >
+                  {m.content.split('\n').map((line, lineIdx) => {
+                    const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
+                    if (linkMatch) {
+                      const [fullMatch, linkText, linkUrl] = linkMatch;
+                      const beforeLink = line.substring(0, line.indexOf(fullMatch));
+                      const afterLink = line.substring(line.indexOf(fullMatch) + fullMatch.length);
 
-    </div>
-  );
-}
+                      return (
+                        <div key={lineIdx}>
+                          {beforeLink}
+                          <button
+                            onClick={() => { window.location.href = linkUrl; }}
+                            className="text-[#BFA200] underline hover:no-underline font-semibold bg-transparent border-none cursor-pointer p-0"
+                          >
+                            {linkText}
+                          </button>
+                          {afterLink}
+                        </div>
+                      );
+                    }
+
+                    if (line.startsWith('**') && line.endsWith('**')) {
+                      return <div key={lineIdx} className="font-bold">{line.slice(2, -2)}</div>;
+                    }
+                    if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
+                      return <div key={lineIdx} className="italic opacity-75">{line.slice(1, -1)}</div>;
+                    }
+
+                    return <div key={lineIdx}>{line}</div>;
+                  })}
+                  <div className={`mt-1 text-[10px] md:text-xs opacity-70 select-none ${m.role === 'user' ? 'text-black/70 text-right' : 'text-white/70'}`}>
+                    {formatTimestamp(m.createdAt)}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {isSending && (
+              <div className="flex justify-start">
+                <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-black/10 text-white shadow-sm">
+                  {t('chatbot.page.typing')}
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </main>
+
+        <footer>
+          <div className="max-w-3xl mx-auto w-full px-3 py-3">
+            <div className="relative">
+              <Input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t('chatbot.page.inputPlaceholder')}
+                disabled={isSending}
+                className="h-12 pr-12 md:text-base"
+              />
+
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                className={`absolute inset-y-0 right-2 flex items-center justify-center rounded-xl
+      ${canSend ? 'cursor-pointer text-white hover:opacity-90' : 'text-white cursor-not-allowed'}`}
+                aria-label={t('chatbot.page.sendAria')}
+                title={t('chatbot.page.sendTitle')}
+                style={{ width: '2.25rem' }}
+              >
+                <FiSend className="text-xl" />
+              </button>
+            </div>
+
+          </div>
+        </footer>
+
+      </div>
+    );
+  }

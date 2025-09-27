@@ -61,6 +61,7 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
 
   // Glow state for chat icon when chat section is visible
   const [glowChatIcon, setGlowChatIcon] = useState(false);
+
   useEffect(() => {
     const handler = (e) => setGlowChatIcon(!!e.detail);
     window.addEventListener('chatSectionVisible', handler);
@@ -283,6 +284,23 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
     () => navItems.some((n) => isActivePath(n.path, location.pathname)),
     [navItems, location.pathname]
   );
+
+  useEffect(() => {
+    function onPreview(e) {
+      const { sessionId, welcome } = e.detail || {};
+      const current = sessionStorage.getItem("chatbot-session-id");
+      if (sessionId !== current) return;
+  
+      const toastKey = `toast_shown:${sessionId}`;
+      if (sessionStorage.getItem(toastKey)) return;
+  
+      showToast(welcome); // your UI
+      sessionStorage.setItem(toastKey, "true");
+    }
+    window.addEventListener("welcome-preview", onPreview);
+    return () => window.removeEventListener("welcome-preview", onPreview);
+  }, []);
+  
 
   return (
     <nav

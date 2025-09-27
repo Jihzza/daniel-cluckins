@@ -25,7 +25,6 @@ export default function Layout() {
     const clearOnUnload = () => {
       try {
         sessionStorage.removeItem('chatbot-session-id');
-        sessionStorage.removeItem('chat_session_id');
       } catch {}
     };
     window.addEventListener('beforeunload', clearOnUnload);
@@ -62,12 +61,12 @@ export default function Layout() {
   }, []);
 
   useEffect(() => {
-    const existing = localStorage.getItem('chat_session_id');
+    const existing = localStorage.getItem('chatbot-session-id');
     const sid = existing ||
      (typeof crypto?.randomUUID === 'function'
         ? crypto.randomUUID()
         : Math.random().toString(36).lastIndexOf(2));
-    localStorage.setItem('chat_session_id', sid);
+    localStorage.setItem('chatbot-session-id', sid);
     setSessionId(sid);
   }, []);
 

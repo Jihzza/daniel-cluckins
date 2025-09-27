@@ -7,6 +7,18 @@ function titleize(s) {
   return cap.length > 40 ? cap.slice(0, 37).trimEnd() + "…" : cap;
 }
 
+export function getOrCreateChatSession() {
+  const KEY = "chatbot-session-id"; // 👈 keep consistent everywhere
+  // Create a fresh session on full reload: we rely on Layout’s beforeunload/pagehide to clear it
+  let id = sessionStorage.getItem(KEY);
+  if (!id) {
+    id = (typeof crypto?.randomUUID === "function")
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    sessionStorage.setItem(KEY, id);
+  }
+  return id;
+}
 /**
  * Returns an array of { session_id, title, last_at, message_count }
  */
