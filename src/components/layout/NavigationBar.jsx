@@ -94,7 +94,6 @@ export default function NavigationBar({ onNavigate, isChatbotOpen, onChatClick, 
         hasShownRef.current = true;
         window.__welcome_preview_shown = true;
         // consume pending store so future navigations don’t keep “finding” the same message
-        try { sessionStorage.removeItem('pending_welcome_message'); } catch { }
         if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
         popupTimeoutRef.current = setTimeout(() => {
           console.log('[Nav] auto-hide toast after 5s');
