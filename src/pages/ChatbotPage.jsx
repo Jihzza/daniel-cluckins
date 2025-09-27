@@ -7,15 +7,18 @@ import { supabase } from '../lib/supabaseClient';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FiClock, FiPlus, FiSend } from 'react-icons/fi';
 import Input from '../components/common/Forms/Input';
-import { useTranslation } from 'react-i18next'; // ⬅️ added
+import { useTranslation } from 'react-i18next';
 
 const SESSION_STORAGE_KEY = 'chatbot-session-id';
 
 export default function ChatbotPage() {
   const { user } = useAuth();
-  const { t } = useTranslation(); // ⬅️ added
+  const { t } = useTranslation(); 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const emittedKeyFor = (sid) => `welcome_emitted:${sid}`;
+  const hasEmittedWelcome = (sid) => !!sessionStorage.getItem(emittedKeyFor(sid));
+  const markWelcomeEmitted = (sid) => sessionStorage.setItem(emittedKeyFor(sid), 'true');
   const [sessionId, setSessionId] = useState(() => {
     const fromUrl = new URLSearchParams(window.location.search).get('session_id');
     if (fromUrl) {
@@ -145,6 +148,47 @@ export default function ChatbotPage() {
     loadHistory();
   }, [user?.id, sessionId]);
 
+  useEffect(() => {
+    if (!historyLoaded) return;
+    if (messages.length > 0) return;
+    if (!sessionId) return;
+
+    if (hasEmittedWelcome(sessionId)) return;
+
+    const pending = sessionStorage.getItem('prending_welcome_message');
+    if (pending) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const profile = user ? {
+          full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+          email: user.email || null,
+          phone: user.user_metadata?.phone || null,
+        } : null;
+
+        let msg;
+        if (openaiService.isConfigured()) {
+          msg = await openaiService.getWelcomeMessage(user?.id ?? null, profile);
+        } else {
+          msg = "👋 Welcome! I'm here to help. What can I assist you with today?";
+        }
+
+        if (!cancelled && msg) {
+          markWelcomeEmitted(sessionId);
+          const now = new Date().toISOString();
+          setMessages(prev => [...prev, { role: 'assistant', content: msg, createdAt: now}]);
+          await saveChatRow('assistant', msg);
+          setHasShownWelcome(true);
+        }
+      } catch (err) {
+        console.error('[ChatbotPage] welcome generation failed:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [historyLoaded, messages.length, sessionId, user?.id]);
 
     // Payment banners
     useEffect(() => {
