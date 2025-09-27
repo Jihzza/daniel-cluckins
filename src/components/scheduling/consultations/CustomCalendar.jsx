@@ -40,7 +40,7 @@ export default function CustomCalendar({
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(selectedDate || today));
   const [focusedDate, setFocusedDate] = useState(selectedDate || today);
   const gridRef = useRef(null);
-
+  const { t } = useTranslation();
   // set of YYYY-MM-DD strings for dots
   const markedSet = useMemo(() => {
     try {
